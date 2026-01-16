@@ -4,7 +4,7 @@ Backpack Exchange MCP Server
 A Model Context Protocol server that exposes Backpack Exchange API functionality
 for order management (list, create, cancel orders).
 
-Phase 5: MCP server with list_orders and create_order tools
+Phase 7: MCP server with list_orders, create_order, and cancel_order tools
 """
 
 from mcp.server.fastmcp import FastMCP
@@ -146,6 +146,54 @@ def create_order(
         return {
             "success": True,
             "order": order
+        }
+    except ValueError as e:
+        # Return error in response format (don't raise, so MCP can handle it)
+        return {
+            "success": False,
+            "error": str(e),
+            "order": None
+        }
+    except Exception as e:
+        # Handle unexpected errors
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}",
+            "order": None
+        }
+
+
+@mcp.tool()
+def cancel_order(orderId: str, symbol: str) -> dict:
+    """
+    Cancel a specific order by ID.
+    
+    Cancels an order from the order book by its order ID.
+    
+    Args:
+        orderId: The unique identifier of the order to cancel
+        symbol: The trading pair symbol (e.g., "BTC_USDC")
+    
+    Returns:
+        Dictionary containing:
+        - success: Boolean indicating if cancellation was successful
+        - order: Cancelled order object (if successful), containing:
+          * id: Order ID
+          * symbol: Trading pair
+          * status: Order status (typically "Cancelled")
+          * side: "Bid" or "Ask"
+          * quantity: Original order quantity
+          * price: Limit price (if applicable)
+        - error: Error message (if error occurred)
+    """
+    try:
+        # Call the Backpack client to cancel the order
+        cancelled_order = client.cancel_order(orderId, symbol)
+        
+        # Return cancellation confirmation
+        return {
+            "success": True,
+            "order": cancelled_order
         }
     except ValueError as e:
         # Return error in response format (don't raise, so MCP can handle it)
