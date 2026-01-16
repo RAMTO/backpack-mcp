@@ -4,14 +4,20 @@ Backpack Exchange MCP Server
 A Model Context Protocol server that exposes Backpack Exchange API functionality
 for order management (list, create, cancel orders).
 
-Phase 1: Minimal MCP server with test tool
+Phase 3: MCP server with list_orders tool connected to BackpackClient
 """
 
 from mcp.server.fastmcp import FastMCP
+from typing import Optional
+from backpack_client import BackpackClient
 
 # Create FastMCP server instance
 # json_response=True ensures responses are in JSON format
 mcp = FastMCP("Backpack Exchange", json_response=True)
+
+# Initialize Backpack client
+# This will load API keys from environment variables
+client = BackpackClient()
 
 
 @mcp.tool()
@@ -20,7 +26,7 @@ def hello_world(name: str = "World") -> dict:
     A simple test tool to verify the MCP server is working.
     
     This is a placeholder tool for Phase 1 testing.
-    Once verified, we'll add real Backpack API tools.
+    Kept for backward compatibility and testing.
     
     Args:
         name: Name to greet (default: "World")
@@ -29,6 +35,65 @@ def hello_world(name: str = "World") -> dict:
         Dictionary with a greeting message
     """
     return {"message": f"Hello, {name}!"}
+
+
+@mcp.tool()
+def list_orders(symbol: Optional[str] = None) -> dict:
+    """
+    List all open spot orders, optionally filtered by symbol.
+    
+    Retrieves all open orders for SPOT markets. If symbol is provided,
+    only returns orders for that trading pair.
+    
+    Args:
+        symbol: Optional trading pair symbol (e.g., "BTC_USDC").
+               If None, returns all open spot orders.
+    
+    Returns:
+        Dictionary containing:
+        - orders: List of order objects, each with:
+          * id: Order ID
+          * symbol: Trading pair
+          * side: "Bid" (buy) or "Ask" (sell)
+          * orderType: "Limit", "Market", etc.
+          * status: Order status
+          * quantity: Order quantity
+          * executedQuantity: Filled quantity
+          * price: Limit price (if applicable)
+          * timeInForce: "GTC", "IOC", etc.
+          * createdAt: Timestamp in milliseconds
+        - count: Number of orders returned
+        - symbol: Filter symbol used (if any)
+    
+    Raises:
+        ValueError: If API returns an error (wrapped in response dict)
+    """
+    try:
+        # Call the Backpack client to get orders
+        orders = client.get_orders(symbol)
+        
+        # Return structured response
+        return {
+            "orders": orders,
+            "count": len(orders),
+            "symbol": symbol if symbol else "all"
+        }
+    except ValueError as e:
+        # Return error in response format (don't raise, so MCP can handle it)
+        return {
+            "error": str(e),
+            "orders": [],
+            "count": 0,
+            "symbol": symbol if symbol else "all"
+        }
+    except Exception as e:
+        # Handle unexpected errors
+        return {
+            "error": f"Unexpected error: {str(e)}",
+            "orders": [],
+            "count": 0,
+            "symbol": symbol if symbol else "all"
+        }
 
 
 if __name__ == "__main__":
