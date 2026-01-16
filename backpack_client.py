@@ -4,12 +4,16 @@ Backpack Exchange API Client
 Wrapper around the Backpack API that handles authentication,
 HTTP requests, and error handling.
 
-Phase 2: Client with get_orders() method
+Phase 8: Production-ready client with comprehensive error handling
 """
 
 import requests
+import logging
 from typing import Optional, List, Dict, Any
 from auth import create_auth_from_env
+
+# Set up logging (redact sensitive information)
+logger = logging.getLogger(__name__)
 
 
 class BackpackClient:
@@ -81,6 +85,9 @@ class BackpackClient:
         
         # Make GET request with query parameters
         try:
+            # Log request (without sensitive headers)
+            logger.debug(f"GET /api/v1/orders with params: {query_params}")
+            
             response = requests.get(
                 f"{self.base_url}/api/v1/orders",
                 params=query_params,
@@ -90,6 +97,9 @@ class BackpackClient:
             
             # Check for HTTP errors
             response.raise_for_status()
+            
+            # Log successful response
+            logger.debug(f"GET /api/v1/orders: {response.status_code} - {len(response.json()) if isinstance(response.json(), list) else 1} order(s)")
             
             # Parse JSON response
             orders = response.json()
@@ -123,6 +133,7 @@ class BackpackClient:
             
         except requests.exceptions.RequestException as e:
             # Handle network errors (connection, timeout, etc.)
+            logger.error(f"DELETE /api/v1/order network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
     def cancel_order(self, order_id: str, symbol: str) -> Dict[str, Any]:
@@ -205,6 +216,7 @@ class BackpackClient:
             
         except requests.exceptions.RequestException as e:
             # Handle network errors (connection, timeout, etc.)
+            logger.error(f"DELETE /api/v1/order network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
     def create_order(
@@ -301,6 +313,11 @@ class BackpackClient:
         
         # Make POST request to create the order
         try:
+            # Log request (without sensitive data)
+            safe_params = {k: v for k, v in order_params.items() if k != 'orderId'}
+            logger.info(f"POST /api/v1/order: Creating {order_params.get('side')} {order_params.get('orderType')} order for {order_params.get('symbol')}")
+            logger.debug(f"POST /api/v1/order params: {safe_params}")
+            
             response = requests.post(
                 f"{self.base_url}/api/v1/order",
                 json=order_params,
@@ -316,6 +333,9 @@ class BackpackClient:
             
             # Parse JSON response
             order = response.json()
+            
+            # Log successful order creation
+            logger.info(f"POST /api/v1/order: Order created successfully - ID: {order.get('id')}")
             
             # Return order confirmation
             return order
@@ -335,6 +355,7 @@ class BackpackClient:
             
         except requests.exceptions.RequestException as e:
             # Handle network errors (connection, timeout, etc.)
+            logger.error(f"DELETE /api/v1/order network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
     def cancel_order(self, order_id: str, symbol: str) -> Dict[str, Any]:
@@ -417,4 +438,5 @@ class BackpackClient:
             
         except requests.exceptions.RequestException as e:
             # Handle network errors (connection, timeout, etc.)
+            logger.error(f"DELETE /api/v1/order network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e

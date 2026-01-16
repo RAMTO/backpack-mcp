@@ -4,7 +4,7 @@ Backpack Exchange MCP Server
 A Model Context Protocol server that exposes Backpack Exchange API functionality
 for order management (list, create, cancel orders).
 
-Phase 7: MCP server with list_orders, create_order, and cancel_order tools
+Phase 8: Production-ready MCP server with all tools and comprehensive error handling
 """
 
 from mcp.server.fastmcp import FastMCP
