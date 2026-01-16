@@ -21,23 +21,6 @@ client = BackpackClient()
 
 
 @mcp.tool()
-def hello_world(name: str = "World") -> dict:
-    """
-    A simple test tool to verify the MCP server is working.
-    
-    This is a placeholder tool for Phase 1 testing.
-    Kept for backward compatibility and testing.
-    
-    Args:
-        name: Name to greet (default: "World")
-    
-    Returns:
-        Dictionary with a greeting message
-    """
-    return {"message": f"Hello, {name}!"}
-
-
-@mcp.tool()
 def list_orders(symbol: Optional[str] = None) -> dict:
     """
     List all open spot orders, optionally filtered by symbol.
