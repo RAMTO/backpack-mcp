@@ -251,21 +251,45 @@ def example_get_open_orders(symbol: str = None):
 
 
 def example_cancel_order(order_id: str, symbol: str):
-    """Example: Cancel an order."""
+    """Example: Cancel a specific open order.
+    
+    Cancels an order from the order book by its order ID.
+    
+    Reference: DELETE /api/v1/order (Backpack Exchange API)
+    - Required params: orderId, symbol
+    - Instruction: orderCancel
+    
+    Args:
+        order_id: The unique identifier of the order (from example_get_open_orders)
+        symbol: The trading pair symbol (e.g., 'BTC_USDC')
+    
+    Returns:
+        Cancellation confirmation with order details
+    
+    Usage:
+        # First, get your open orders to find the order ID
+        example_get_open_orders('BTC_USDC')
+        
+        # Then cancel the specific order
+        example_cancel_order('order_12345', 'BTC_USDC')
+    """
     
     auth = create_auth_from_env()
     
+    # Cancel parameters - orderId and symbol are required
     cancel_params = {
         'orderId': order_id,
         'symbol': symbol
     }
     
+    # Generate signed headers with orderCancel instruction
     headers = auth.sign_request(
         instruction='orderCancel',
         params=cancel_params,
         window=5000
     )
     
+    # Make DELETE request to cancel the order
     response = requests.delete(
         f"{BASE_URL}/api/v1/order",
         json=cancel_params,
@@ -273,20 +297,102 @@ def example_cancel_order(order_id: str, symbol: str):
     )
     
     print(f"Status: {response.status_code}")
-    print(f"Response: {response.json()}")
+    
+    if response.status_code in [200, 202]:
+        result = response.json()
+        print(f"\n✓ Order cancelled successfully!")
+        print(f"  Order ID: {result.get('id', order_id)}")
+        print(f"  Symbol: {result.get('symbol', symbol)}")
+        print(f"  Status: {result.get('status', 'Cancelled')}")
+        if result.get('side'):
+            side = 'Buy' if result.get('side') == 'Bid' else 'Sell'
+            print(f"  Side: {side}")
+        if result.get('quantity'):
+            print(f"  Quantity: {result.get('quantity')}")
+    else:
+        print(f"\n✗ Error cancelling order: {response.text}")
+
+
+def example_cancel_all_orders(symbol: str):
+    """Example: Cancel all open orders for a specific symbol.
+    
+    Cancels all open orders on the specified market at once.
+    Useful for quickly closing all positions.
+    
+    Reference: DELETE /api/v1/orders (Backpack Exchange API)
+    - Required param: symbol
+    - Instruction: orderCancel
+    
+    Args:
+        symbol: The trading pair symbol (e.g., 'BTC_USDC')
+    
+    Returns:
+        List of cancelled orders
+    
+    Usage:
+        # Cancel all BTC_USDC orders at once
+        example_cancel_all_orders('BTC_USDC')
+    """
+    
+    auth = create_auth_from_env()
+    
+    # Cancel parameters - symbol is required
+    cancel_params = {
+        'symbol': symbol
+    }
+    
+    # Generate signed headers with orderCancel instruction
+    headers = auth.sign_request(
+        instruction='orderCancel',
+        params=cancel_params,
+        window=5000
+    )
+    
+    # Make DELETE request to cancel all orders
+    response = requests.delete(
+        f"{BASE_URL}/api/v1/orders",
+        json=cancel_params,
+        headers=headers
+    )
+    
+    print(f"Status: {response.status_code}")
+    
+    if response.status_code in [200, 202]:
+        cancelled_orders = response.json()
+        if isinstance(cancelled_orders, list) and len(cancelled_orders) > 0:
+            print(f"\n✓ Cancelled {len(cancelled_orders)} order(s):")
+            for i, order in enumerate(cancelled_orders, 1):
+                side = 'Buy' if order.get('side') == 'Bid' else 'Sell'
+                print(f"  [{i}] {order.get('id')} | {side} {order.get('quantity')} @ {order.get('price', 'Market')}")
+        elif isinstance(cancelled_orders, list):
+            print("\nNo orders to cancel")
+        else:
+            print(f"\n✓ Orders cancelled: {cancelled_orders}")
+    else:
+        print(f"\n✗ Error cancelling orders: {response.text}")
 
 
 if __name__ == "__main__":
     # Uncomment the example you want to run:
+    
+    # Account & Balance queries
     # example_get_account()
     # example_get_balances()
     # example_get_lend_positions()
+    
+    # Trading
     # example_place_order()
     
-    # Get open orders
-    example_get_open_orders()  # All open spot orders
+    # View open orders
+    # example_get_open_orders()  # All open spot orders
     # example_get_open_orders('BTC_USDC')  # Only BTC_USDC orders
     
-    # Cancel order (get order ID from example_get_open_orders first)
-    # example_cancel_order('your_order_id_here', 'BTC_USDC')
+    # Cancel orders
+    # Step 1: Get order ID from example_get_open_orders() above
+    # Step 2: Cancel specific order:
+    # example_cancel_order('27586447764', 'BTC_USDC')
+    
+    # Or cancel all orders for a symbol at once:
+    # example_cancel_all_orders('BTC_USDC')
+    
     pass
