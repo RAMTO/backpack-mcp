@@ -1,0 +1,51 @@
+### Backpack Exchange API - Public Endpoints (No Auth Required)
+
+@baseUrl = https://api.backpack.exchange
+
+### Get all markets
+GET {{baseUrl}}/api/v1/markets
+
+### Get market details for a specific symbol
+GET {{baseUrl}}/api/v1/market?symbol=SOL_USDC
+
+### Get ticker for a specific symbol (24hr stats)
+GET {{baseUrl}}/api/v1/ticker?symbol=SOL_USDC
+
+### Get all tickers
+GET {{baseUrl}}/api/v1/tickers
+
+### Get order book depth
+GET {{baseUrl}}/api/v1/depth?symbol=SOL_USDC
+
+### Get K-lines/candlesticks
+GET {{baseUrl}}/api/v1/klines?symbol=SOL_USDC&interval=1h&startTime=1694687965941&endTime=1694688565941
+
+### Get recent trades
+GET {{baseUrl}}/api/v1/trades?symbol=SOL_USDC
+
+### Get historical trades
+GET {{baseUrl}}/api/v1/historicalTrades?symbol=SOL_USDC&limit=100
+
+### Get all assets
+GET {{baseUrl}}/api/v1/assets
+
+### Get collateral assets
+GET {{baseUrl}}/api/v1/collateral
+
+### Get system status
+GET {{baseUrl}}/api/v1/status
+
+### Ping endpoint
+GET {{baseUrl}}/api/v1/ping
+
+### Get mark prices
+GET {{baseUrl}}/api/v1/markPrices
+
+### Get mark price for specific symbol
+GET {{baseUrl}}/api/v1/markPrice?symbol=SOL_USDC_PERP
+
+### Get open interest
+GET {{baseUrl}}/api/v1/openInterest?symbol=SOL_USDC_PERP
+
+### Get funding interval rates
+GET {{baseUrl}}/api/v1/fundingIntervalRates?symbol=SOL_USDC_PERP
