@@ -127,12 +127,15 @@ def example_place_order():
     auth = create_auth_from_env()
     
     # Order parameters
+    # Buying $10 worth of BTC at $90K limit price
+    # Quantity must be a multiple of stepSize (typically 0.001 for BTC)
+    # Using 0.001 BTC = $90 worth (closest to $10 that meets precision requirements)
     order_params = {
         'orderType': 'Limit',
-        'price': '100.50',
-        'quantity': '1.0',
+        'price': '90000',  # Limit price: $90,000 per BTC
+        'quantity': '0.001',  # Amount of BTC to buy (must match stepSize precision, typically 3 decimals)
         'side': 'Bid',  # Buy
-        'symbol': 'SOL_USDC',
+        'symbol': 'BTC_USDC',  # BTC/USDC trading pair
         'timeInForce': 'GTC'
     }
     
