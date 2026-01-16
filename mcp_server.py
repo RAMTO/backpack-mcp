@@ -4,7 +4,7 @@ Backpack Exchange MCP Server
 A Model Context Protocol server that exposes Backpack Exchange API functionality
 for order management (list, create, cancel orders).
 
-Phase 3: MCP server with list_orders tool connected to BackpackClient
+Phase 5: MCP server with list_orders and create_order tools
 """
 
 from mcp.server.fastmcp import FastMCP
@@ -93,6 +93,73 @@ def list_orders(symbol: Optional[str] = None) -> dict:
             "orders": [],
             "count": 0,
             "symbol": symbol if symbol else "all"
+        }
+
+
+@mcp.tool()
+def create_order(
+    symbol: str,
+    side: str,
+    orderType: str,
+    quantity: str,
+    price: Optional[str] = None,
+    timeInForce: str = "GTC"
+) -> dict:
+    """
+    Create a new order (limit or market).
+    
+    Places an order on the Backpack Exchange. Supports both limit and market orders.
+    
+    Args:
+        symbol: Trading pair symbol (e.g., "BTC_USDC")
+        side: Order side - "Bid" (buy) or "Ask" (sell)
+        orderType: Order type - "Limit" or "Market"
+        quantity: Order quantity (must match stepSize precision for the symbol)
+        price: Limit price (required for Limit orders, ignored for Market orders)
+        timeInForce: Time in force - "GTC" (default), "IOC", or "FOK"
+    
+    Returns:
+        Dictionary containing:
+        - id: New order ID
+        - symbol: Trading pair
+        - side: "Bid" or "Ask"
+        - orderType: "Limit" or "Market"
+        - status: Order status
+        - quantity: Order quantity
+        - price: Limit price (if applicable)
+        - timeInForce: Time in force setting
+        - createdAt: Timestamp in milliseconds
+        - error: Error message (if error occurred)
+    """
+    try:
+        # Call the Backpack client to create the order
+        order = client.create_order(
+            symbol=symbol,
+            side=side,
+            orderType=orderType,
+            quantity=quantity,
+            price=price,
+            timeInForce=timeInForce
+        )
+        
+        # Return order confirmation
+        return {
+            "success": True,
+            "order": order
+        }
+    except ValueError as e:
+        # Return error in response format (don't raise, so MCP can handle it)
+        return {
+            "success": False,
+            "error": str(e),
+            "order": None
+        }
+    except Exception as e:
+        # Handle unexpected errors
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}",
+            "order": None
         }
 
 
