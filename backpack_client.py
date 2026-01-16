@@ -125,6 +125,88 @@ class BackpackClient:
             # Handle network errors (connection, timeout, etc.)
             raise ValueError(f"Network error: {str(e)}") from e
     
+    def cancel_order(self, order_id: str, symbol: str) -> Dict[str, Any]:
+        """
+        Cancel a specific order by ID.
+        
+        Cancels an order from the order book by its order ID.
+        
+        Args:
+            order_id: The unique identifier of the order to cancel
+            symbol: The trading pair symbol (e.g., "BTC_USDC")
+        
+        Returns:
+            Cancelled order dictionary containing:
+            - id: Order ID
+            - symbol: Trading pair
+            - status: Order status (typically "Cancelled")
+            - side: "Bid" or "Ask"
+            - quantity: Original order quantity
+            - price: Limit price (if applicable)
+        
+        Raises:
+            ValueError: If validation fails or API returns an error
+            requests.RequestException: If network request fails
+        """
+        # Validate required parameters
+        if not order_id:
+            raise ValueError("order_id is required")
+        if not symbol:
+            raise ValueError("symbol is required")
+        
+        # Build cancel parameters
+        # orderId and symbol are required for cancellation
+        cancel_params: Dict[str, str] = {
+            'orderId': order_id,
+            'symbol': symbol
+        }
+        
+        # Generate signed headers
+        # Instruction: 'orderCancel' (from Backpack API docs)
+        headers = self.auth.sign_request(
+            instruction='orderCancel',
+            params=cancel_params,
+            window=5000
+        )
+        
+        # Make DELETE request to cancel the order
+        try:
+            response = requests.delete(
+                f"{self.base_url}/api/v1/order",
+                json=cancel_params,
+                headers={
+                    **headers,
+                    'Content-Type': 'application/json'
+                },
+                timeout=30
+            )
+            
+            # Check for HTTP errors
+            response.raise_for_status()
+            
+            # Parse JSON response
+            cancelled_order = response.json()
+            
+            # Return cancellation confirmation
+            return cancelled_order
+            
+        except requests.exceptions.HTTPError as e:
+            # Handle HTTP errors (4xx, 5xx)
+            error_msg = f"HTTP {response.status_code}"
+            try:
+                error_detail = response.json()
+                if isinstance(error_detail, dict) and 'message' in error_detail:
+                    error_msg += f": {error_detail['message']}"
+                else:
+                    error_msg += f": {response.text[:200]}"
+            except:
+                error_msg += f": {response.text[:200]}"
+            raise ValueError(error_msg) from e
+            
+        except requests.exceptions.RequestException as e:
+            # Handle network errors (connection, timeout, etc.)
+            raise ValueError(f"Network error: {str(e)}") from e
+    
     def create_order(
         self,
         symbol: str,
@@ -237,6 +319,88 @@ class BackpackClient:
             
             # Return order confirmation
             return order
+            
+        except requests.exceptions.HTTPError as e:
+            # Handle HTTP errors (4xx, 5xx)
+            error_msg = f"HTTP {response.status_code}"
+            try:
+                error_detail = response.json()
+                if isinstance(error_detail, dict) and 'message' in error_detail:
+                    error_msg += f": {error_detail['message']}"
+                else:
+                    error_msg += f": {response.text[:200]}"
+            except:
+                error_msg += f": {response.text[:200]}"
+            raise ValueError(error_msg) from e
+            
+        except requests.exceptions.RequestException as e:
+            # Handle network errors (connection, timeout, etc.)
+            raise ValueError(f"Network error: {str(e)}") from e
+    
+    def cancel_order(self, order_id: str, symbol: str) -> Dict[str, Any]:
+        """
+        Cancel a specific order by ID.
+        
+        Cancels an order from the order book by its order ID.
+        
+        Args:
+            order_id: The unique identifier of the order to cancel
+            symbol: The trading pair symbol (e.g., "BTC_USDC")
+        
+        Returns:
+            Cancelled order dictionary containing:
+            - id: Order ID
+            - symbol: Trading pair
+            - status: Order status (typically "Cancelled")
+            - side: "Bid" or "Ask"
+            - quantity: Original order quantity
+            - price: Limit price (if applicable)
+        
+        Raises:
+            ValueError: If validation fails or API returns an error
+            requests.RequestException: If network request fails
+        """
+        # Validate required parameters
+        if not order_id:
+            raise ValueError("order_id is required")
+        if not symbol:
+            raise ValueError("symbol is required")
+        
+        # Build cancel parameters
+        # orderId and symbol are required for cancellation
+        cancel_params: Dict[str, str] = {
+            'orderId': order_id,
+            'symbol': symbol
+        }
+        
+        # Generate signed headers
+        # Instruction: 'orderCancel' (from Backpack API docs)
+        headers = self.auth.sign_request(
+            instruction='orderCancel',
+            params=cancel_params,
+            window=5000
+        )
+        
+        # Make DELETE request to cancel the order
+        try:
+            response = requests.delete(
+                f"{self.base_url}/api/v1/order",
+                json=cancel_params,
+                headers={
+                    **headers,
+                    'Content-Type': 'application/json'
+                },
+                timeout=30
+            )
+            
+            # Check for HTTP errors
+            response.raise_for_status()
+            
+            # Parse JSON response
+            cancelled_order = response.json()
+            
+            # Return cancellation confirmation
+            return cancelled_order
             
         except requests.exceptions.HTTPError as e:
             # Handle HTTP errors (4xx, 5xx)
