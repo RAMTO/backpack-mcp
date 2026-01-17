@@ -40,6 +40,32 @@ cd backpack-mcp
 
 ### 2. Install Dependencies
 
+**Option A: Using Makefile (Recommended)**
+
+The easiest way to set up the project:
+
+```bash
+make setup
+```
+
+This will:
+- Create a virtual environment
+- Install all dependencies
+- Copy `.env.example` to `.env` (if it doesn't exist)
+
+Then edit `.env` and add your API keys (see step 3 below).
+
+**Other useful Makefile commands:**
+```bash
+make help      # Show all available commands
+make test      # Run integration tests
+make clean     # Remove virtual environment
+```
+
+**Option B: Manual Installation**
+
+If you prefer to install manually:
+
 ```bash
 # Using pip
 pip3 install -r requirements.txt
