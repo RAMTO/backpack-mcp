@@ -65,12 +65,17 @@ BACKPACK_PRIVATE_KEY=your_base64_encoded_private_key
 BACKPACK_PUBLIC_KEY=your_base64_encoded_public_key
 ```
 
-**To get your API keys:**
+**To generate key pair:**
+```
+python3 -c "from cryptography.hazmat.primitives.asymmetric import ed25519; import base64; key = ed25519.Ed25519PrivateKey.generate(); seed = key.private_bytes_raw(); pub = key.public_key().public_bytes_raw(); print(f'Seed: {base64.b64encode(seed).decode()}\nPublic Key: {base64.b64encode(pub).decode()}')"
+```
+
+**To get your API key:**
 1. Log in to [Backpack Exchange](https://backpack.exchange)
 2. Go to Settings > API Keys
-3. Generate a new ED25519 key pair
-4. Base64 encode both keys
-5. Add them to your `.env` file
+3. Click New API key
+4. Add the public key
+5. Add the generated key pair to your `.env` file
 
 ## Usage
 
