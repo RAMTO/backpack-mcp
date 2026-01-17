@@ -20,7 +20,7 @@ A Model Context Protocol (MCP) server that provides AI assistants with tools to 
 ```
 backpack-mcp/
 ├── auth.py                 # ED25519 authentication module
-├── backpack_client.py       # Backpack API client wrapper
+├── backpack_client.py      # Backpack API client wrapper
 ├── mcp_server.py           # MCP server with tools
 ├── requirements.txt        # Python dependencies
 ├── .env.example            # Environment variables template
@@ -46,7 +46,7 @@ pip3 install -r requirements.txt
 
 # Or using virtual environment (recommended)
 python3 -m venv venv
-source venv/bin/activate  # On macOS/Linux
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -86,16 +86,20 @@ The MCP server allows AI assistants like Cursor to interact with your Backpack a
 {
   "mcpServers": {
     "backpack": {
-      "command": "/Users/martindobrev/Code/backpack-mcp/venv/bin/python",
+      "command": "/path/to/backpack-mcp/venv/bin/python",
       "args": [
-        "/Users/martindobrev/Code/backpack-mcp/mcp_server.py"
+        "/path/to/backpack-mcp/mcp_server.py"
       ]
     }
   }
 }
 ```
 
-**Note**: Update the paths to match your system.
+**Important**: Replace `/path/to/backpack-mcp` with the actual path to your project directory. For example:
+- On macOS/Linux: `/Users/yourusername/Code/backpack-mcp` or `~/Code/backpack-mcp`
+- On Windows: `C:\Users\yourusername\Code\backpack-mcp`
+
+You can find your project path by running `pwd` (macOS/Linux) or `cd` (Windows) in your project directory.
 
 2. **Restart Cursor** completely (quit and reopen)
 
@@ -106,57 +110,6 @@ The MCP server allows AI assistants like Cursor to interact with your Backpack a
    - "Show my positions"
    - "Get my balances"
    - "Open a long position in SOL_USDC_PERP for $10"
-
-### Direct Python Usage
-
-You can also use the client directly in Python:
-
-```python
-from backpack_client import BackpackClient
-
-client = BackpackClient()
-
-# List orders
-orders = client.get_orders()
-print(f"Found {len(orders)} orders")
-
-# Create order (SPOT or PERP)
-order = client.create_order(
-    symbol="BTC_USDC",  # or "BTC_USDC_PERP" for perpetual
-    side="Bid",
-    orderType="Limit",
-    quantity="0.001",
-    price="80000",
-    timeInForce="GTC"
-)
-print(f"Order created: {order['id']}")
-
-# Create market order with quote quantity (for PERP)
-perp_order = client.create_order(
-    symbol="SOL_USDC_PERP",
-    side="Bid",
-    orderType="Market",
-    quoteQuantity="10"  # $10 worth
-)
-print(f"Perp order created: {perp_order['id']}")
-
-# Cancel order
-cancelled = client.cancel_order(order_id="12345", symbol="BTC_USDC")
-print(f"Order cancelled: {cancelled['status']}")
-
-# List positions
-positions = client.get_positions()
-print(f"Found {len(positions)} positions")
-for pos in positions:
-    print(f"{pos['symbol']}: {pos['netQuantity']} (PnL: {pos['pnlUnrealized']})")
-
-# Get balances (including lent funds)
-balances = client.get_balances()
-for asset, bal in balances.items():
-    total = float(bal['available']) + float(bal['locked']) + float(bal['staked']) + float(bal['lent'])
-    if total > 0:
-        print(f"{asset}: Available={bal['available']}, Lent={bal['lent']}")
-```
 
 ## Available MCP Tools
 
@@ -331,46 +284,6 @@ venv/bin/python -c "from mcp_server import list_orders; print('OK')"
 - Check you have sufficient funds for orders
 - Ensure network connectivity to `api.backpack.exchange`
 
-## Development
-
-### Implementation Phases
-
-The project follows a phased implementation approach (see `docs/MCP_PHASED_PLAN.md`):
-
-**Completed Phases:**
-- ✅ **Phase 0-8**: Setup, MCP server, order management (list, create, cancel)
-- ✅ **Phase 9-10**: Position management (list perpetual positions)
-- ✅ **Phase 11-12**: Account management (get balances including lent funds)
-
-**Current Status:**
-- Production-ready MCP server with order, position, and balance tools
-- All core trading functionality implemented
-- Comprehensive integration tests
-
-### Project Structure
-
-- `auth.py`: Core authentication (ED25519 signing)
-- `backpack_client.py`: API client wrapper with error handling
-- `mcp_server.py`: MCP server exposing tools
-- `examples/`: Example code for direct API usage
-- `docs/`: Documentation including phased implementation plan
-- `test_integration.py`: Comprehensive integration tests
-
-### Adding New Tools
-
-1. Add method to `BackpackClient` in `backpack_client.py`
-2. Add MCP tool in `mcp_server.py` using `@mcp.tool()` decorator
-3. Add tests to `test_integration.py` as a new scenario
-4. Update `docs/MCP_PHASED_PLAN.md` with new phases
-5. Update this README with new tool documentation
-
 ## License
 
 This project is for personal use. Use at your own risk when trading.
-
-## Support
-
-For issues or questions:
-- Check the troubleshooting section
-- Review the example code in `examples/`
-- Verify your API keys and configuration
