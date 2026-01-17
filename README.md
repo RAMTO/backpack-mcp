@@ -30,6 +30,39 @@ backpack-mcp/
 └── test_integration.py     # Integration tests
 ```
 
+## Prerequisites
+
+Before installing, ensure you have:
+
+- **Python 3.8 or higher** (Python 3.12+ recommended)
+- **make** (usually pre-installed on macOS/Linux)
+
+### Python Installation
+
+If you don't have Python 3.8+ installed, we recommend using **pyenv** to manage Python versions:
+
+**Install pyenv:**
+```bash
+# macOS (using Homebrew)
+brew install pyenv
+
+# Linux (using pyenv-installer)
+curl https://pyenv.run | bash
+```
+
+**Install Python 3.12:**
+```bash
+pyenv install 3.12.12
+pyenv local 3.12.12
+```
+
+**Verify Python version:**
+```bash
+python3 --version  # Should show Python 3.8 or higher
+```
+
+The Makefile will automatically check if Python 3 is available and show an error if it's missing.
+
 ## Installation
 
 ### 1. Clone or Navigate to Project
@@ -310,9 +343,9 @@ All tests are integrated into `test_integration.py` and cover:
 
 ## Requirements
 
-- Python 3.8+
-- Backpack Exchange API keys (ED25519)
-- Dependencies (see `requirements.txt`):
+- **Python 3.8+** (see [Prerequisites](#prerequisites) for installation instructions)
+- **Backpack Exchange API keys** (ED25519) - see [Configure API Keys](#3-configure-api-keys)
+- **Dependencies** (automatically installed via `make setup` or `pip install -r requirements.txt`):
   - `mcp[cli]` - MCP Python SDK
   - `requests` - HTTP client
   - `cryptography` - ED25519 signing
