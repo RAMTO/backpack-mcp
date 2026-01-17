@@ -12,12 +12,7 @@ from mcp.server.fastmcp import FastMCP
 from typing import Optional
 from backpack_client import BackpackClient
 
-# Create FastMCP server instance
-# json_response=True ensures responses are in JSON format
 mcp = FastMCP("Backpack Exchange", json_response=True)
-
-# Initialize Backpack client
-# This will load API keys from environment variables
 client = BackpackClient()
 
 
@@ -53,17 +48,14 @@ def list_orders(symbol: Optional[str] = None) -> dict:
         ValueError: If API returns an error (wrapped in response dict)
     """
     try:
-        # Call the Backpack client to get orders
         orders = client.get_orders(symbol)
         
-        # Return structured response
         return {
             "orders": orders,
             "count": len(orders),
             "symbol": symbol if symbol else "all"
         }
     except ValueError as e:
-        # Return error in response format (don't raise, so MCP can handle it)
         return {
             "error": str(e),
             "orders": [],
@@ -71,7 +63,6 @@ def list_orders(symbol: Optional[str] = None) -> dict:
             "symbol": symbol if symbol else "all"
         }
     except Exception as e:
-        # Handle unexpected errors
         return {
             "error": f"Unexpected error: {str(e)}",
             "orders": [],
@@ -122,12 +113,10 @@ def create_order(
         - error: Error message (if error occurred)
     """
     try:
-        # Filter out None values (convert to None if string "null" is passed)
         qty = None if quantity is None or quantity == "null" or quantity == "" else quantity
         prc = None if price is None or price == "null" or price == "" else price
         qty_quote = None if quoteQuantity is None or quoteQuantity == "null" or quoteQuantity == "" else quoteQuantity
         
-        # Call the Backpack client to create the order
         order = client.create_order(
             symbol=symbol,
             side=side,
@@ -138,20 +127,17 @@ def create_order(
             quoteQuantity=qty_quote
         )
         
-        # Return order confirmation
         return {
             "success": True,
             "order": order
         }
     except ValueError as e:
-        # Return error in response format (don't raise, so MCP can handle it)
         return {
             "success": False,
             "error": str(e),
             "order": None
         }
     except Exception as e:
-        # Handle unexpected errors
         return {
             "success": False,
             "error": f"Unexpected error: {str(e)}",
@@ -183,23 +169,19 @@ def cancel_order(orderId: str, symbol: str) -> dict:
         - error: Error message (if error occurred)
     """
     try:
-        # Call the Backpack client to cancel the order
         cancelled_order = client.cancel_order(orderId, symbol)
         
-        # Return cancellation confirmation
         return {
             "success": True,
             "order": cancelled_order
         }
     except ValueError as e:
-        # Return error in response format (don't raise, so MCP can handle it)
         return {
             "success": False,
             "error": str(e),
             "order": None
         }
     except Exception as e:
-        # Handle unexpected errors
         return {
             "success": False,
             "error": f"Unexpected error: {str(e)}",
@@ -243,23 +225,19 @@ def list_positions() -> dict:
         - error: Error message (if error occurred)
     """
     try:
-        # Call the Backpack client to get positions
         positions = client.get_positions()
         
-        # Return structured response
         return {
             "positions": positions,
             "count": len(positions)
         }
     except ValueError as e:
-        # Return error in response format (don't raise, so MCP can handle it)
         return {
             "error": str(e),
             "positions": [],
             "count": 0
         }
     except Exception as e:
-        # Handle unexpected errors
         return {
             "error": f"Unexpected error: {str(e)}",
             "positions": [],
@@ -294,14 +272,11 @@ def get_balances(showZeroBalances: bool = False) -> dict:
         - error: Error message (if error occurred)
     """
     try:
-        # Call the Backpack client to get balances (includes lent funds)
         all_balances = client.get_balances()
         
-        # Filter zero balances if requested
         if showZeroBalances:
             balances = all_balances
         else:
-            # Only include assets with at least one non-zero balance field
             balances = {}
             for asset, bal in all_balances.items():
                 available = float(bal.get('available', '0') or '0')
@@ -312,7 +287,6 @@ def get_balances(showZeroBalances: bool = False) -> dict:
                 if available > 0 or locked > 0 or staked > 0 or lent > 0:
                     balances[asset] = bal
         
-        # Return structured response
         return {
             "balances": balances,
             "count": len(balances),
@@ -327,7 +301,6 @@ def get_balances(showZeroBalances: bool = False) -> dict:
             "totalAssets": 0
         }
     except Exception as e:
-        # Handle unexpected errors
         return {
             "error": f"Unexpected error: {str(e)}",
             "balances": {},
@@ -337,7 +310,5 @@ def get_balances(showZeroBalances: bool = False) -> dict:
 
 
 if __name__ == "__main__":
-    # Run the server using stdio transport
-    # This allows local communication via stdin/stdout
-    # No network exposure - safe for local usage
+    # Uses stdio transport for local communication (no network exposure)
     mcp.run(transport="stdio")

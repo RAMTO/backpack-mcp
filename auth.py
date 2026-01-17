@@ -22,11 +22,8 @@ class BackpackAuth:
             private_key_b64: Base64-encoded private key (seed)
             public_key_b64: Base64-encoded public key (verifying key)
         """
-        # Decode and load the private key
         private_key_bytes = base64.b64decode(private_key_b64)
         self.private_key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key_bytes)
-        
-        # Store public key for API header
         self.public_key_b64 = public_key_b64
     
     def sign_request(
@@ -53,17 +50,14 @@ class BackpackAuth:
         if timestamp is None:
             timestamp = int(time.time() * 1000)
         
-        # Build signing string
         signing_string = self._build_signing_string(instruction, params, timestamp, window)
         
         if debug:
             print(f"Signing string: {signing_string}")
         
-        # Sign the string
         signature_bytes = self.private_key.sign(signing_string.encode('utf-8'))
         signature_b64 = base64.b64encode(signature_bytes).decode('utf-8')
         
-        # Return headers
         return {
             'X-API-Key': self.public_key_b64,
             'X-Signature': signature_b64,
@@ -86,22 +80,17 @@ class BackpackAuth:
         2. Append timestamp and window
         3. Prefix with instruction type
         """
-        # Start with instruction prefix
         parts = [f'instruction={instruction}']
         
-        # Add parameters if they exist (ordered alphabetically)
         if params:
-            # Sort params alphabetically and convert to query string format
             sorted_params = sorted(params.items())
             param_string = urlencode(sorted_params)
             if param_string:
                 parts.append(param_string)
         
-        # Append timestamp and window
         parts.append(f'timestamp={timestamp}')
         parts.append(f'window={window}')
         
-        # Join with &
         return '&'.join(parts)
 
 
@@ -122,13 +111,9 @@ def create_auth_from_env() -> BackpackAuth:
     import os
     from dotenv import load_dotenv
     
-    # Load environment variables from .env file
     load_dotenv()
     
-    # Get private key (required)
     private_key = os.getenv('BACKPACK_PRIVATE_KEY')
-    
-    # Get public key (required)
     public_key = os.getenv('BACKPACK_PUBLIC_KEY')
     
     if not private_key:

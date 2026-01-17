@@ -12,7 +12,6 @@ import logging
 from typing import Optional, List, Dict, Any
 from auth import create_auth_from_env
 
-# Set up logging (redact sensitive information)
 logger = logging.getLogger(__name__)
 
 
@@ -31,8 +30,6 @@ class BackpackClient:
         Args:
             base_url: Base URL for the Backpack API (default: production API)
         """
-        # Create auth instance from environment variables
-        # This loads BACKPACK_PRIVATE_KEY and BACKPACK_PUBLIC_KEY from .env
         self.auth = create_auth_from_env()
         self.base_url = base_url
     
@@ -64,18 +61,14 @@ class BackpackClient:
             ValueError: If API returns an error response
             requests.RequestException: If network request fails
         """
-        # Build query parameters
         # marketType is REQUIRED - use 'SPOT' for spot orders
         query_params: Dict[str, str] = {
             'marketType': 'SPOT'
         }
         
-        # Add optional symbol filter
         if symbol:
             query_params['symbol'] = symbol
         
-        # Generate signed headers
-        # For GET requests with query params, pass them to sign_request
         # Instruction: 'orderQueryAll' (from Backpack API docs)
         headers = self.auth.sign_request(
             instruction='orderQueryAll',
@@ -83,9 +76,7 @@ class BackpackClient:
             window=5000
         )
         
-        # Make GET request with query parameters
         try:
-            # Log request (without sensitive headers)
             logger.debug(f"GET /api/v1/orders with params: {query_params}")
             
             response = requests.get(
@@ -95,31 +86,23 @@ class BackpackClient:
                 timeout=30
             )
             
-            # Check for HTTP errors
             response.raise_for_status()
             
-            # Log successful response
             logger.debug(f"GET /api/v1/orders: {response.status_code} - {len(response.json()) if isinstance(response.json(), list) else 1} order(s)")
             
-            # Parse JSON response
             orders = response.json()
             
-            # Ensure we return a list (API might return empty list or dict)
             if isinstance(orders, list):
                 return orders
             elif isinstance(orders, dict):
-                # If API returns a dict, try to extract orders list
                 if 'orders' in orders:
                     return orders['orders']
                 else:
-                    # Return as single-item list if it's an order object
                     return [orders]
             else:
-                # Unexpected format, return empty list
                 return []
                 
         except requests.exceptions.HTTPError as e:
-            # Handle HTTP errors (4xx, 5xx)
             error_msg = f"HTTP {response.status_code}"
             try:
                 error_detail = response.json()
@@ -132,7 +115,6 @@ class BackpackClient:
             raise ValueError(error_msg) from e
             
         except requests.exceptions.RequestException as e:
-            # Handle network errors (connection, timeout, etc.)
             logger.error(f"GET /api/v1/orders network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
@@ -171,7 +153,6 @@ class BackpackClient:
             ValueError: If API returns an error response
             requests.RequestException: If network request fails
         """
-        # No query parameters needed - endpoint returns all positions
         # Instruction: 'positionQuery' (following Backpack API pattern)
         headers = self.auth.sign_request(
             instruction='positionQuery',
@@ -179,9 +160,7 @@ class BackpackClient:
             window=5000
         )
         
-        # Make GET request to retrieve positions
         try:
-            # Log request
             logger.debug("GET /api/v1/position")
             
             response = requests.get(
@@ -190,31 +169,23 @@ class BackpackClient:
                 timeout=30
             )
             
-            # Check for HTTP errors
             response.raise_for_status()
             
-            # Log successful response
             positions = response.json()
             position_count = len(positions) if isinstance(positions, list) else 1
             logger.debug(f"GET /api/v1/position: {response.status_code} - {position_count} position(s)")
             
-            # Parse JSON response
-            # API returns a list of positions
             if isinstance(positions, list):
                 return positions
             elif isinstance(positions, dict):
-                # If API returns a dict, try to extract positions list
                 if 'positions' in positions:
                     return positions['positions']
                 else:
-                    # Return as single-item list if it's a position object
                     return [positions]
             else:
-                # Unexpected format, return empty list
                 return []
                 
         except requests.exceptions.HTTPError as e:
-            # Handle HTTP errors (4xx, 5xx)
             error_msg = f"HTTP {response.status_code}"
             try:
                 error_detail = response.json()
@@ -227,7 +198,6 @@ class BackpackClient:
             raise ValueError(error_msg) from e
             
         except requests.exceptions.RequestException as e:
-            # Handle network errors (connection, timeout, etc.)
             logger.error(f"GET /api/v1/position network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
@@ -251,7 +221,6 @@ class BackpackClient:
             ValueError: If API returns an error response
             requests.RequestException: If network request fails
         """
-        # No query parameters needed - endpoint returns all positions
         # Instruction: 'borrowLendPositionQuery' (from Backpack API docs and example_auth.py)
         headers = self.auth.sign_request(
             instruction='borrowLendPositionQuery',
@@ -259,9 +228,7 @@ class BackpackClient:
             window=5000
         )
         
-        # Make GET request to retrieve borrow/lend positions
         try:
-            # Log request
             logger.debug("GET /api/v1/borrowLend/positions")
             
             response = requests.get(
@@ -270,26 +237,20 @@ class BackpackClient:
                 timeout=30
             )
             
-            # Check for HTTP errors
             response.raise_for_status()
             
-            # Parse JSON response
             positions = response.json()
             
-            # Log successful response
             position_count = len(positions) if isinstance(positions, list) else 0
             logger.debug(f"GET /api/v1/borrowLend/positions: {response.status_code} - {position_count} position(s)")
             
-            # API returns a list of positions
             if isinstance(positions, list):
                 return positions
             else:
-                # Unexpected format, return empty list
                 logger.warning(f"Unexpected borrow/lend response format: {type(positions)}")
                 return []
                 
         except requests.exceptions.HTTPError as e:
-            # Handle HTTP errors (4xx, 5xx)
             error_msg = f"HTTP {response.status_code}"
             try:
                 error_detail = response.json()
@@ -302,7 +263,6 @@ class BackpackClient:
             raise ValueError(error_msg) from e
             
         except requests.exceptions.RequestException as e:
-            # Handle network errors (connection, timeout, etc.)
             logger.error(f"GET /api/v1/borrowLend/positions network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
@@ -343,7 +303,6 @@ class BackpackClient:
             ValueError: If API returns an error response
             requests.RequestException: If network request fails
         """
-        # Get regular balances (available, locked, staked)
         # Instruction: 'balanceQuery' (from Backpack API docs and example_auth.py)
         headers = self.auth.sign_request(
             instruction='balanceQuery',
@@ -351,9 +310,7 @@ class BackpackClient:
             window=5000
         )
         
-        # Make GET request to retrieve balances
         try:
-            # Log request
             logger.debug("GET /api/v1/capital")
             
             response = requests.get(
@@ -362,18 +319,13 @@ class BackpackClient:
                 timeout=30
             )
             
-            # Check for HTTP errors
             response.raise_for_status()
             
-            # Parse JSON response
             balances = response.json()
             
-            # Log successful response
             asset_count = len(balances) if isinstance(balances, dict) else 0
             logger.debug(f"GET /api/v1/capital: {response.status_code} - {asset_count} asset(s)")
             
-            # API returns a dictionary with asset symbols as keys
-            # Each asset has available, locked, staked fields
             if not isinstance(balances, dict):
                 logger.warning(f"Unexpected balance response format: {type(balances)}")
                 balances = {}
@@ -382,7 +334,6 @@ class BackpackClient:
             try:
                 lend_positions = self.get_borrow_lend_positions()
                 
-                # Add lent amounts to balances
                 # Positive netQuantity means lending (funds are lent out)
                 for position in lend_positions:
                     symbol = position.get('symbol', '')
@@ -390,10 +341,8 @@ class BackpackClient:
                     
                     if symbol and net_qty:
                         try:
-                            # netQuantity is positive when lending
                             lent_amount = float(net_qty)
                             if lent_amount > 0:
-                                # Initialize balance entry if it doesn't exist
                                 if symbol not in balances:
                                     balances[symbol] = {
                                         'available': '0',
@@ -401,7 +350,6 @@ class BackpackClient:
                                         'staked': '0'
                                     }
                                 
-                                # Add lent amount
                                 balances[symbol]['lent'] = str(lent_amount)
                         except (ValueError, TypeError):
                             logger.warning(f"Invalid netQuantity for {symbol}: {net_qty}")
@@ -413,17 +361,13 @@ class BackpackClient:
                         balances[asset]['lent'] = '0'
                         
             except Exception as e:
-                # If borrow/lend positions fail, still return regular balances
-                # but log the error
                 logger.warning(f"Failed to fetch borrow/lend positions: {str(e)}")
-                # Add 'lent' field with '0' for all assets
                 for asset in balances:
                     balances[asset]['lent'] = '0'
             
             return balances
                 
         except requests.exceptions.HTTPError as e:
-            # Handle HTTP errors (4xx, 5xx)
             error_msg = f"HTTP {response.status_code}"
             try:
                 error_detail = response.json()
@@ -436,7 +380,6 @@ class BackpackClient:
             raise ValueError(error_msg) from e
             
         except requests.exceptions.RequestException as e:
-            # Handle network errors (connection, timeout, etc.)
             logger.error(f"GET /api/v1/capital network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
@@ -506,7 +449,6 @@ class BackpackClient:
             return cancelled_order
             
         except requests.exceptions.HTTPError as e:
-            # Handle HTTP errors (4xx, 5xx)
             error_msg = f"HTTP {response.status_code}"
             try:
                 error_detail = response.json()
@@ -519,7 +461,6 @@ class BackpackClient:
             raise ValueError(error_msg) from e
             
         except requests.exceptions.RequestException as e:
-            # Handle network errors (connection, timeout, etc.)
             logger.error(f"DELETE /api/v1/order network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
@@ -565,8 +506,7 @@ class BackpackClient:
             ValueError: If validation fails or API returns an error
             requests.RequestException: If network request fails
         """
-        # Handle None/null values FIRST (from optional parameters or MCP calls)
-        # This must happen before any validation
+        # Handle None/null values from optional parameters or MCP calls (must happen before validation)
         if quantity is not None and (quantity == "null" or quantity == ""):
             quantity = None
         if quoteQuantity is not None and (quoteQuantity == "null" or quoteQuantity == ""):
@@ -574,7 +514,6 @@ class BackpackClient:
         if price is not None and (price == "null" or price == ""):
             price = None
         
-        # Validate required parameters
         if not symbol:
             raise ValueError("symbol is required")
         if not side:
@@ -586,43 +525,36 @@ class BackpackClient:
         if orderType not in ["Limit", "Market"]:
             raise ValueError(f"orderType must be 'Limit' or 'Market', got '{orderType}'")
         
-        # For market orders: need either quantity or quoteQuantity
-        # For limit orders: need quantity
         if orderType == "Market":
             if not quantity and not quoteQuantity:
                 raise ValueError("Market orders must specify either 'quantity' or 'quoteQuantity'")
-        else:  # Limit order
+        else:
             if not quantity:
                 raise ValueError("quantity is required for Limit orders")
         
-        # Validate price for limit orders
         if orderType == "Limit":
             if not price:
                 raise ValueError("price is required for Limit orders")
             try:
-                float(price)  # Validate it's a number
+                float(price)
             except ValueError:
                 raise ValueError(f"price must be a valid number, got '{price}'")
         
-        # Validate quantity is numeric (if provided)
         if quantity:
             try:
                 float(quantity)
             except ValueError:
                 raise ValueError(f"quantity must be a valid number, got '{quantity}'")
         
-        # Validate quoteQuantity is numeric (if provided)
         if quoteQuantity:
             try:
                 float(quoteQuantity)
             except ValueError:
                 raise ValueError(f"quoteQuantity must be a valid number, got '{quoteQuantity}'")
         
-        # Validate timeInForce
         if timeInForce not in ["GTC", "IOC", "FOK"]:
             raise ValueError(f"timeInForce must be 'GTC', 'IOC', or 'FOK', got '{timeInForce}'")
         
-        # Build order parameters
         order_params: Dict[str, str] = {
             'orderType': orderType,
             'side': side,
@@ -630,17 +562,14 @@ class BackpackClient:
             'timeInForce': timeInForce
         }
         
-        # Add quantity or quoteQuantity
         if quantity:
             order_params['quantity'] = quantity
         if quoteQuantity:
             order_params['quoteQuantity'] = quoteQuantity
         
-        # Add price for limit orders
         if orderType == "Limit" and price:
             order_params['price'] = price
         
-        # Generate signed headers
         # Instruction: 'orderExecute' (from Backpack API docs)
         headers = self.auth.sign_request(
             instruction='orderExecute',
@@ -648,9 +577,7 @@ class BackpackClient:
             window=5000
         )
         
-        # Make POST request to create the order
         try:
-            # Log request (without sensitive data)
             safe_params = {k: v for k, v in order_params.items() if k != 'orderId'}
             logger.info(f"POST /api/v1/order: Creating {order_params.get('side')} {order_params.get('orderType')} order for {order_params.get('symbol')}")
             logger.debug(f"POST /api/v1/order params: {safe_params}")
@@ -665,20 +592,15 @@ class BackpackClient:
                 timeout=30
             )
             
-            # Check for HTTP errors
             response.raise_for_status()
             
-            # Parse JSON response
             order = response.json()
             
-            # Log successful order creation
             logger.info(f"POST /api/v1/order: Order created successfully - ID: {order.get('id')}")
             
-            # Return order confirmation
             return order
             
         except requests.exceptions.HTTPError as e:
-            # Handle HTTP errors (4xx, 5xx)
             error_msg = f"HTTP {response.status_code}"
             try:
                 error_detail = response.json()
@@ -691,89 +613,5 @@ class BackpackClient:
             raise ValueError(error_msg) from e
             
         except requests.exceptions.RequestException as e:
-            # Handle network errors (connection, timeout, etc.)
-            logger.error(f"DELETE /api/v1/order network error: {str(e)}")
-            raise ValueError(f"Network error: {str(e)}") from e
-    
-    def cancel_order(self, order_id: str, symbol: str) -> Dict[str, Any]:
-        """
-        Cancel a specific order by ID.
-        
-        Cancels an order from the order book by its order ID.
-        
-        Args:
-            order_id: The unique identifier of the order to cancel
-            symbol: The trading pair symbol (e.g., "BTC_USDC")
-        
-        Returns:
-            Cancelled order dictionary containing:
-            - id: Order ID
-            - symbol: Trading pair
-            - status: Order status (typically "Cancelled")
-            - side: "Bid" or "Ask"
-            - quantity: Original order quantity
-            - price: Limit price (if applicable)
-        
-        Raises:
-            ValueError: If validation fails or API returns an error
-            requests.RequestException: If network request fails
-        """
-        # Validate required parameters
-        if not order_id:
-            raise ValueError("order_id is required")
-        if not symbol:
-            raise ValueError("symbol is required")
-        
-        # Build cancel parameters
-        # orderId and symbol are required for cancellation
-        cancel_params: Dict[str, str] = {
-            'orderId': order_id,
-            'symbol': symbol
-        }
-        
-        # Generate signed headers
-        # Instruction: 'orderCancel' (from Backpack API docs)
-        headers = self.auth.sign_request(
-            instruction='orderCancel',
-            params=cancel_params,
-            window=5000
-        )
-        
-        # Make DELETE request to cancel the order
-        try:
-            response = requests.delete(
-                f"{self.base_url}/api/v1/order",
-                json=cancel_params,
-                headers={
-                    **headers,
-                    'Content-Type': 'application/json'
-                },
-                timeout=30
-            )
-            
-            # Check for HTTP errors
-            response.raise_for_status()
-            
-            # Parse JSON response
-            cancelled_order = response.json()
-            
-            # Return cancellation confirmation
-            return cancelled_order
-            
-        except requests.exceptions.HTTPError as e:
-            # Handle HTTP errors (4xx, 5xx)
-            error_msg = f"HTTP {response.status_code}"
-            try:
-                error_detail = response.json()
-                if isinstance(error_detail, dict) and 'message' in error_detail:
-                    error_msg += f": {error_detail['message']}"
-                else:
-                    error_msg += f": {response.text[:200]}"
-            except:
-                error_msg += f": {response.text[:200]}"
-            raise ValueError(error_msg) from e
-            
-        except requests.exceptions.RequestException as e:
-            # Handle network errors (connection, timeout, etc.)
             logger.error(f"DELETE /api/v1/order network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
