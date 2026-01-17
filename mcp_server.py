@@ -2,9 +2,10 @@
 Backpack Exchange MCP Server
 
 A Model Context Protocol server that exposes Backpack Exchange API functionality
-for order management (list, create, cancel orders) and position management (list positions).
+for order management (list, create, cancel orders), position management (list positions),
+and account management (get balances).
 
-Phase 10: Production-ready MCP server with order and position tools
+Phase 12: Production-ready MCP server with order, position, and balance tools
 """
 
 from mcp.server.fastmcp import FastMCP
@@ -263,6 +264,75 @@ def list_positions() -> dict:
             "error": f"Unexpected error: {str(e)}",
             "positions": [],
             "count": 0
+        }
+
+
+@mcp.tool()
+def get_balances(showZeroBalances: bool = False) -> dict:
+    """
+    Get all account balances including lent funds.
+    
+    Retrieves balances for all assets in the account. Returns available,
+    locked, staked, and lent amounts for each asset.
+    
+    This includes funds that are currently lent out (earning interest).
+    The total balance for an asset = available + locked + staked + lent.
+    
+    Args:
+        showZeroBalances: If False (default), only show assets with non-zero balances.
+                         If True, show all assets including zero balances.
+    
+    Returns:
+        Dictionary containing:
+        - balances: Dictionary with asset symbols as keys, each containing:
+          * available: Available balance (can be used for trading)
+          * locked: Locked balance (committed to open orders)
+          * staked: Staked balance (staked for rewards)
+          * lent: Lent balance (funds currently lent out, earning interest)
+        - count: Number of assets with non-zero balances
+        - totalAssets: Total number of assets (including zero balances if showZeroBalances=True)
+        - error: Error message (if error occurred)
+    """
+    try:
+        # Call the Backpack client to get balances (includes lent funds)
+        all_balances = client.get_balances()
+        
+        # Filter zero balances if requested
+        if showZeroBalances:
+            balances = all_balances
+        else:
+            # Only include assets with at least one non-zero balance field
+            balances = {}
+            for asset, bal in all_balances.items():
+                available = float(bal.get('available', '0') or '0')
+                locked = float(bal.get('locked', '0') or '0')
+                staked = float(bal.get('staked', '0') or '0')
+                lent = float(bal.get('lent', '0') or '0')
+                
+                if available > 0 or locked > 0 or staked > 0 or lent > 0:
+                    balances[asset] = bal
+        
+        # Return structured response
+        return {
+            "balances": balances,
+            "count": len(balances),
+            "totalAssets": len(all_balances)
+        }
+    except ValueError as e:
+        # Return error in response format (don't raise, so MCP can handle it)
+        return {
+            "error": str(e),
+            "balances": {},
+            "count": 0,
+            "totalAssets": 0
+        }
+    except Exception as e:
+        # Handle unexpected errors
+        return {
+            "error": f"Unexpected error: {str(e)}",
+            "balances": {},
+            "count": 0,
+            "totalAssets": 0
         }
 
 

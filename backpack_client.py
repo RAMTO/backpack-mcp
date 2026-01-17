@@ -231,6 +231,215 @@ class BackpackClient:
             logger.error(f"GET /api/v1/position network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
+    def get_borrow_lend_positions(self) -> List[Dict[str, Any]]:
+        """
+        Get all open borrow/lend positions.
+        
+        Retrieves positions for assets that are currently lent out or borrowed.
+        Positive netQuantity means lending (funds are lent out).
+        Negative netQuantity means borrowing (funds are borrowed).
+        
+        Returns:
+            List of borrow/lend position dictionaries, each containing:
+            - symbol: Asset symbol (e.g., "BTC", "USDC")
+            - netQuantity: Net quantity (positive = lending, negative = borrowing)
+            - cumulativeInterest: Cumulative interest earned/paid
+            - markPrice: Current mark price
+            - id: Position ID
+        
+        Raises:
+            ValueError: If API returns an error response
+            requests.RequestException: If network request fails
+        """
+        # No query parameters needed - endpoint returns all positions
+        # Instruction: 'borrowLendPositionQuery' (from Backpack API docs and example_auth.py)
+        headers = self.auth.sign_request(
+            instruction='borrowLendPositionQuery',
+            params=None,
+            window=5000
+        )
+        
+        # Make GET request to retrieve borrow/lend positions
+        try:
+            # Log request
+            logger.debug("GET /api/v1/borrowLend/positions")
+            
+            response = requests.get(
+                f"{self.base_url}/api/v1/borrowLend/positions",
+                headers=headers,
+                timeout=30
+            )
+            
+            # Check for HTTP errors
+            response.raise_for_status()
+            
+            # Parse JSON response
+            positions = response.json()
+            
+            # Log successful response
+            position_count = len(positions) if isinstance(positions, list) else 0
+            logger.debug(f"GET /api/v1/borrowLend/positions: {response.status_code} - {position_count} position(s)")
+            
+            # API returns a list of positions
+            if isinstance(positions, list):
+                return positions
+            else:
+                # Unexpected format, return empty list
+                logger.warning(f"Unexpected borrow/lend response format: {type(positions)}")
+                return []
+                
+        except requests.exceptions.HTTPError as e:
+            # Handle HTTP errors (4xx, 5xx)
+            error_msg = f"HTTP {response.status_code}"
+            try:
+                error_detail = response.json()
+                if isinstance(error_detail, dict) and 'message' in error_detail:
+                    error_msg += f": {error_detail['message']}"
+                else:
+                    error_msg += f": {response.text[:200]}"
+            except:
+                error_msg += f": {response.text[:200]}"
+            raise ValueError(error_msg) from e
+            
+        except requests.exceptions.RequestException as e:
+            # Handle network errors (connection, timeout, etc.)
+            logger.error(f"GET /api/v1/borrowLend/positions network error: {str(e)}")
+            raise ValueError(f"Network error: {str(e)}") from e
+    
+    def get_balances(self) -> Dict[str, Dict[str, str]]:
+        """
+        Get all account balances including lent funds.
+        
+        Retrieves balances for all assets in the account. Returns available,
+        locked, staked, and lent amounts for each asset.
+        
+        This method combines regular balances with borrow/lend positions to show
+        the complete picture, including funds that are lent out.
+        
+        Returns:
+            Dictionary with asset symbols as keys, each containing:
+            - available: Available balance (can be used for trading)
+            - locked: Locked balance (committed to open orders)
+            - staked: Staked balance (staked for rewards)
+            - lent: Lent balance (funds currently lent out, earning interest)
+            
+            Example:
+            {
+                "BTC": {
+                    "available": "0.5",
+                    "locked": "0.1",
+                    "staked": "0.0",
+                    "lent": "0.0000999"
+                },
+                "USDC": {
+                    "available": "0.0",
+                    "locked": "0.0",
+                    "staked": "0.0",
+                    "lent": "121.83"
+                }
+            }
+        
+        Raises:
+            ValueError: If API returns an error response
+            requests.RequestException: If network request fails
+        """
+        # Get regular balances (available, locked, staked)
+        # Instruction: 'balanceQuery' (from Backpack API docs and example_auth.py)
+        headers = self.auth.sign_request(
+            instruction='balanceQuery',
+            params=None,
+            window=5000
+        )
+        
+        # Make GET request to retrieve balances
+        try:
+            # Log request
+            logger.debug("GET /api/v1/capital")
+            
+            response = requests.get(
+                f"{self.base_url}/api/v1/capital",
+                headers=headers,
+                timeout=30
+            )
+            
+            # Check for HTTP errors
+            response.raise_for_status()
+            
+            # Parse JSON response
+            balances = response.json()
+            
+            # Log successful response
+            asset_count = len(balances) if isinstance(balances, dict) else 0
+            logger.debug(f"GET /api/v1/capital: {response.status_code} - {asset_count} asset(s)")
+            
+            # API returns a dictionary with asset symbols as keys
+            # Each asset has available, locked, staked fields
+            if not isinstance(balances, dict):
+                logger.warning(f"Unexpected balance response format: {type(balances)}")
+                balances = {}
+            
+            # Get borrow/lend positions to add lent amounts
+            try:
+                lend_positions = self.get_borrow_lend_positions()
+                
+                # Add lent amounts to balances
+                # Positive netQuantity means lending (funds are lent out)
+                for position in lend_positions:
+                    symbol = position.get('symbol', '')
+                    net_qty = position.get('netQuantity', '0')
+                    
+                    if symbol and net_qty:
+                        try:
+                            # netQuantity is positive when lending
+                            lent_amount = float(net_qty)
+                            if lent_amount > 0:
+                                # Initialize balance entry if it doesn't exist
+                                if symbol not in balances:
+                                    balances[symbol] = {
+                                        'available': '0',
+                                        'locked': '0',
+                                        'staked': '0'
+                                    }
+                                
+                                # Add lent amount
+                                balances[symbol]['lent'] = str(lent_amount)
+                        except (ValueError, TypeError):
+                            logger.warning(f"Invalid netQuantity for {symbol}: {net_qty}")
+                            continue
+                
+                # Ensure all balances have a 'lent' field (set to '0' if not lent)
+                for asset in balances:
+                    if 'lent' not in balances[asset]:
+                        balances[asset]['lent'] = '0'
+                        
+            except Exception as e:
+                # If borrow/lend positions fail, still return regular balances
+                # but log the error
+                logger.warning(f"Failed to fetch borrow/lend positions: {str(e)}")
+                # Add 'lent' field with '0' for all assets
+                for asset in balances:
+                    balances[asset]['lent'] = '0'
+            
+            return balances
+                
+        except requests.exceptions.HTTPError as e:
+            # Handle HTTP errors (4xx, 5xx)
+            error_msg = f"HTTP {response.status_code}"
+            try:
+                error_detail = response.json()
+                if isinstance(error_detail, dict) and 'message' in error_detail:
+                    error_msg += f": {error_detail['message']}"
+                else:
+                    error_msg += f": {response.text[:200]}"
+            except:
+                error_msg += f": {response.text[:200]}"
+            raise ValueError(error_msg) from e
+            
+        except requests.exceptions.RequestException as e:
+            # Handle network errors (connection, timeout, etc.)
+            logger.error(f"GET /api/v1/capital network error: {str(e)}")
+            raise ValueError(f"Network error: {str(e)}") from e
+    
     def cancel_order(self, order_id: str, symbol: str) -> Dict[str, Any]:
         """
         Cancel a specific order by ID.
