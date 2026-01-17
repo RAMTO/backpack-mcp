@@ -133,7 +133,102 @@ class BackpackClient:
             
         except requests.exceptions.RequestException as e:
             # Handle network errors (connection, timeout, etc.)
-            logger.error(f"DELETE /api/v1/order network error: {str(e)}")
+            logger.error(f"GET /api/v1/orders network error: {str(e)}")
+            raise ValueError(f"Network error: {str(e)}") from e
+    
+    def get_positions(self) -> List[Dict[str, Any]]:
+        """
+        Get all open perpetual positions.
+        
+        Retrieves all open positions for PERP markets. Returns positions
+        with detailed information including entry price, mark price,
+        PnL, liquidation price, and margin factors.
+        
+        Returns:
+            List of position dictionaries, each containing:
+            - symbol: Trading pair (e.g., "BTC-USDC" or "BTC_USDC_PERP")
+            - netQuantity: Net quantity (positive = long, negative = short)
+            - entryPrice: Entry price of the position
+            - markPrice: Current mark price
+            - breakEvenPrice: Break-even price
+            - estLiquidationPrice: Estimated liquidation price
+            - pnlUnrealized: Unrealized profit/loss
+            - pnlRealized: Realized profit/loss
+            - netExposureQuantity: Net exposure quantity
+            - netExposureNotional: Net exposure notional value
+            - positionId: Unique position identifier
+            - imf: Initial Margin Factor
+            - mmf: Maintenance Margin Factor
+            - imfFunction: IMF calculation function details
+            - mmfFunction: MMF calculation function details
+            - netCost: Net cost of the position
+            - cumulativeFundingPayment: Cumulative funding payments
+            - cumulativeInterest: Cumulative interest paid/received
+            - subaccountId: Subaccount ID
+            - userId: User ID
+        
+        Raises:
+            ValueError: If API returns an error response
+            requests.RequestException: If network request fails
+        """
+        # No query parameters needed - endpoint returns all positions
+        # Instruction: 'positionQuery' (following Backpack API pattern)
+        headers = self.auth.sign_request(
+            instruction='positionQuery',
+            params=None,
+            window=5000
+        )
+        
+        # Make GET request to retrieve positions
+        try:
+            # Log request
+            logger.debug("GET /api/v1/position")
+            
+            response = requests.get(
+                f"{self.base_url}/api/v1/position",
+                headers=headers,
+                timeout=30
+            )
+            
+            # Check for HTTP errors
+            response.raise_for_status()
+            
+            # Log successful response
+            positions = response.json()
+            position_count = len(positions) if isinstance(positions, list) else 1
+            logger.debug(f"GET /api/v1/position: {response.status_code} - {position_count} position(s)")
+            
+            # Parse JSON response
+            # API returns a list of positions
+            if isinstance(positions, list):
+                return positions
+            elif isinstance(positions, dict):
+                # If API returns a dict, try to extract positions list
+                if 'positions' in positions:
+                    return positions['positions']
+                else:
+                    # Return as single-item list if it's a position object
+                    return [positions]
+            else:
+                # Unexpected format, return empty list
+                return []
+                
+        except requests.exceptions.HTTPError as e:
+            # Handle HTTP errors (4xx, 5xx)
+            error_msg = f"HTTP {response.status_code}"
+            try:
+                error_detail = response.json()
+                if isinstance(error_detail, dict) and 'message' in error_detail:
+                    error_msg += f": {error_detail['message']}"
+                else:
+                    error_msg += f": {response.text[:200]}"
+            except:
+                error_msg += f": {response.text[:200]}"
+            raise ValueError(error_msg) from e
+            
+        except requests.exceptions.RequestException as e:
+            # Handle network errors (connection, timeout, etc.)
+            logger.error(f"GET /api/v1/position network error: {str(e)}")
             raise ValueError(f"Network error: {str(e)}") from e
     
     def cancel_order(self, order_id: str, symbol: str) -> Dict[str, Any]:

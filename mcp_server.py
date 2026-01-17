@@ -2,9 +2,9 @@
 Backpack Exchange MCP Server
 
 A Model Context Protocol server that exposes Backpack Exchange API functionality
-for order management (list, create, cancel orders).
+for order management (list, create, cancel orders) and position management (list positions).
 
-Phase 8: Production-ready MCP server with all tools and comprehensive error handling
+Phase 10: Production-ready MCP server with order and position tools
 """
 
 from mcp.server.fastmcp import FastMCP
@@ -191,6 +191,66 @@ def cancel_order(orderId: str, symbol: str) -> dict:
             "success": False,
             "error": f"Unexpected error: {str(e)}",
             "order": None
+        }
+
+
+@mcp.tool()
+def list_positions() -> dict:
+    """
+    List all open perpetual positions.
+    
+    Retrieves all open positions for PERP markets. Returns detailed
+    information about each position including entry price, mark price,
+    PnL, liquidation price, and margin factors.
+    
+    Returns:
+        Dictionary containing:
+        - positions: List of position objects, each with:
+          * symbol: Trading pair (e.g., "BTC-USDC" or "BTC_USDC_PERP")
+          * netQuantity: Net quantity (positive = long, negative = short)
+          * entryPrice: Entry price of the position
+          * markPrice: Current mark price
+          * breakEvenPrice: Break-even price
+          * estLiquidationPrice: Estimated liquidation price
+          * pnlUnrealized: Unrealized profit/loss
+          * pnlRealized: Realized profit/loss
+          * netExposureQuantity: Net exposure quantity
+          * netExposureNotional: Net exposure notional value
+          * positionId: Unique position identifier
+          * imf: Initial Margin Factor
+          * mmf: Maintenance Margin Factor
+          * imfFunction: IMF calculation function details
+          * mmfFunction: MMF calculation function details
+          * netCost: Net cost of the position
+          * cumulativeFundingPayment: Cumulative funding payments
+          * cumulativeInterest: Cumulative interest paid/received
+          * subaccountId: Subaccount ID
+          * userId: User ID
+        - count: Number of positions returned
+        - error: Error message (if error occurred)
+    """
+    try:
+        # Call the Backpack client to get positions
+        positions = client.get_positions()
+        
+        # Return structured response
+        return {
+            "positions": positions,
+            "count": len(positions)
+        }
+    except ValueError as e:
+        # Return error in response format (don't raise, so MCP can handle it)
+        return {
+            "error": str(e),
+            "positions": [],
+            "count": 0
+        }
+    except Exception as e:
+        # Handle unexpected errors
+        return {
+            "error": f"Unexpected error: {str(e)}",
+            "positions": [],
+            "count": 0
         }
 
 
