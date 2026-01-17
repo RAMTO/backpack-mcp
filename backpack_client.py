@@ -319,22 +319,26 @@ class BackpackClient:
         symbol: str,
         side: str,
         orderType: str,
-        quantity: str,
+        quantity: Optional[str] = None,
         price: Optional[str] = None,
-        timeInForce: str = "GTC"
+        timeInForce: str = "GTC",
+        quoteQuantity: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Create a new order (limit or market).
         
         Places an order on the Backpack Exchange. Supports both limit and market orders.
+        Works for both SPOT (e.g., "BTC_USDC") and PERP (e.g., "BTC_USDC_PERP") markets.
         
         Args:
-            symbol: Trading pair symbol (e.g., "BTC_USDC")
+            symbol: Trading pair symbol (e.g., "BTC_USDC" for spot, "BTC_USDC_PERP" for perpetual)
             side: Order side - "Bid" (buy) or "Ask" (sell)
             orderType: Order type - "Limit" or "Market"
-            quantity: Order quantity (must match stepSize precision for the symbol)
+            quantity: Order quantity (required for limit orders, optional for market if quoteQuantity provided)
             price: Limit price (required for Limit orders, ignored for Market orders)
             timeInForce: Time in force - "GTC" (default), "IOC", or "FOK"
+            quoteQuantity: Quote quantity for market orders (e.g., "10" for $10 worth). 
+                          For market orders, use either quantity OR quoteQuantity.
         
         Returns:
             Order dictionary containing:
@@ -352,6 +356,15 @@ class BackpackClient:
             ValueError: If validation fails or API returns an error
             requests.RequestException: If network request fails
         """
+        # Handle None/null values FIRST (from optional parameters or MCP calls)
+        # This must happen before any validation
+        if quantity is not None and (quantity == "null" or quantity == ""):
+            quantity = None
+        if quoteQuantity is not None and (quoteQuantity == "null" or quoteQuantity == ""):
+            quoteQuantity = None
+        if price is not None and (price == "null" or price == ""):
+            price = None
+        
         # Validate required parameters
         if not symbol:
             raise ValueError("symbol is required")
@@ -363,8 +376,15 @@ class BackpackClient:
             raise ValueError("orderType is required")
         if orderType not in ["Limit", "Market"]:
             raise ValueError(f"orderType must be 'Limit' or 'Market', got '{orderType}'")
-        if not quantity:
-            raise ValueError("quantity is required")
+        
+        # For market orders: need either quantity or quoteQuantity
+        # For limit orders: need quantity
+        if orderType == "Market":
+            if not quantity and not quoteQuantity:
+                raise ValueError("Market orders must specify either 'quantity' or 'quoteQuantity'")
+        else:  # Limit order
+            if not quantity:
+                raise ValueError("quantity is required for Limit orders")
         
         # Validate price for limit orders
         if orderType == "Limit":
@@ -375,11 +395,19 @@ class BackpackClient:
             except ValueError:
                 raise ValueError(f"price must be a valid number, got '{price}'")
         
-        # Validate quantity is numeric
-        try:
-            float(quantity)
-        except ValueError:
-            raise ValueError(f"quantity must be a valid number, got '{quantity}'")
+        # Validate quantity is numeric (if provided)
+        if quantity:
+            try:
+                float(quantity)
+            except ValueError:
+                raise ValueError(f"quantity must be a valid number, got '{quantity}'")
+        
+        # Validate quoteQuantity is numeric (if provided)
+        if quoteQuantity:
+            try:
+                float(quoteQuantity)
+            except ValueError:
+                raise ValueError(f"quoteQuantity must be a valid number, got '{quoteQuantity}'")
         
         # Validate timeInForce
         if timeInForce not in ["GTC", "IOC", "FOK"]:
@@ -388,11 +416,16 @@ class BackpackClient:
         # Build order parameters
         order_params: Dict[str, str] = {
             'orderType': orderType,
-            'quantity': quantity,
             'side': side,
             'symbol': symbol,
             'timeInForce': timeInForce
         }
+        
+        # Add quantity or quoteQuantity
+        if quantity:
+            order_params['quantity'] = quantity
+        if quoteQuantity:
+            order_params['quoteQuantity'] = quoteQuantity
         
         # Add price for limit orders
         if orderType == "Limit" and price:

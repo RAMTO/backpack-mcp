@@ -84,45 +84,57 @@ def create_order(
     symbol: str,
     side: str,
     orderType: str,
-    quantity: str,
+    quantity: Optional[str] = None,
     price: Optional[str] = None,
-    timeInForce: str = "GTC"
+    timeInForce: str = "GTC",
+    quoteQuantity: Optional[str] = None
 ) -> dict:
     """
     Create a new order (limit or market).
     
     Places an order on the Backpack Exchange. Supports both limit and market orders.
+    Works for both SPOT (e.g., "BTC_USDC") and PERP (e.g., "BTC_USDC_PERP") markets.
     
     Args:
-        symbol: Trading pair symbol (e.g., "BTC_USDC")
+        symbol: Trading pair symbol (e.g., "BTC_USDC" for spot, "BTC_USDC_PERP" for perpetual)
         side: Order side - "Bid" (buy) or "Ask" (sell)
         orderType: Order type - "Limit" or "Market"
-        quantity: Order quantity (must match stepSize precision for the symbol)
+        quantity: Order quantity (required for limit orders, optional for market if quoteQuantity provided)
         price: Limit price (required for Limit orders, ignored for Market orders)
         timeInForce: Time in force - "GTC" (default), "IOC", or "FOK"
+        quoteQuantity: Quote quantity for market orders (e.g., "10" for $10 worth).
+                      For market orders, use either quantity OR quoteQuantity.
     
     Returns:
         Dictionary containing:
-        - id: New order ID
-        - symbol: Trading pair
-        - side: "Bid" or "Ask"
-        - orderType: "Limit" or "Market"
-        - status: Order status
-        - quantity: Order quantity
-        - price: Limit price (if applicable)
-        - timeInForce: Time in force setting
-        - createdAt: Timestamp in milliseconds
+        - success: Boolean indicating if order was created
+        - order: Order object (if successful), containing:
+          * id: New order ID
+          * symbol: Trading pair
+          * side: "Bid" or "Ask"
+          * orderType: "Limit" or "Market"
+          * status: Order status
+          * quantity: Order quantity
+          * price: Limit price (if applicable)
+          * timeInForce: Time in force setting
+          * createdAt: Timestamp in milliseconds
         - error: Error message (if error occurred)
     """
     try:
+        # Filter out None values (convert to None if string "null" is passed)
+        qty = None if quantity is None or quantity == "null" or quantity == "" else quantity
+        prc = None if price is None or price == "null" or price == "" else price
+        qty_quote = None if quoteQuantity is None or quoteQuantity == "null" or quoteQuantity == "" else quoteQuantity
+        
         # Call the Backpack client to create the order
         order = client.create_order(
             symbol=symbol,
             side=side,
             orderType=orderType,
-            quantity=quantity,
-            price=price,
-            timeInForce=timeInForce
+            quantity=qty,
+            price=prc,
+            timeInForce=timeInForce,
+            quoteQuantity=qty_quote
         )
         
         # Return order confirmation
