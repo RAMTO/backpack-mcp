@@ -819,9 +819,9 @@ Phase 12 (MCP Tool - Get Balances) ✅ Can test end-to-end here
 - ✅ **Phase 5**: Can create orders via MCP
 - ✅ **Phase 7**: Can cancel orders via MCP
 - ✅ **Phase 8**: Production-ready MCP server (orders)
-- ⬜ **Phase 9**: Can retrieve positions via client
-- ⬜ **Phase 10**: Can list positions via MCP
-- ⬜ **Phase 11**: Can retrieve balances via client
-- ⬜ **Phase 12**: Can get balances via MCP
+- ✅ **Phase 9**: Can retrieve positions via client
+- ✅ **Phase 10**: Can list positions via MCP
+- ✅ **Phase 11**: Can retrieve balances via client
+- ✅ **Phase 12**: Can get balances via MCP
 
 Each phase builds on the previous but can be tested independently!
