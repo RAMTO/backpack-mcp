@@ -390,6 +390,171 @@ except Exception as e:
 
 ---
 
+## Phase 9: Backpack Client - Get Positions
+**Goal**: Add method to retrieve perpetual positions
+
+**Deliverable**: `get_positions()` method in `BackpackClient`
+
+**Implementation**:
+- Add `get_positions()` method to `BackpackClient`
+- Call `GET /api/v1/position` endpoint
+- Use `positionQuery` instruction (or test `positionQueryAll` if needed)
+- Handle errors and return clean data
+- No query parameters needed (returns all positions)
+
+**Code Structure**:
+```python
+def get_positions(self) -> List[Dict[str, Any]]:
+    """
+    Get all open perpetual positions.
+    
+    Retrieves all open positions for PERP markets.
+    Returns positions with details like entry price, mark price,
+    PnL, liquidation price, etc.
+    
+    Returns:
+        List of position dictionaries, each containing:
+        - symbol: Trading pair (e.g., "BTC-USDC" or "BTC_USDC_PERP")
+        - netQuantity: Net quantity (positive = long, negative = short)
+        - entryPrice: Entry price of the position
+        - markPrice: Current mark price
+        - breakEvenPrice: Break-even price
+        - estLiquidationPrice: Estimated liquidation price
+        - pnlUnrealized: Unrealized profit/loss
+        - pnlRealized: Realized profit/loss
+        - netExposureQuantity: Net exposure quantity
+        - netExposureNotional: Net exposure notional value
+        - positionId: Unique position identifier
+        - imf: Initial Margin Factor
+        - mmf: Maintenance Margin Factor
+        - cumulativeFundingPayment: Cumulative funding payments
+        - subaccountId: Subaccount ID
+        - userId: User ID
+    """
+    # Implementation here
+```
+
+**Test**:
+```python
+# test_positions.py
+from backpack_client import BackpackClient
+
+client = BackpackClient()
+
+# Test 1: Get all positions
+print("Test 1: Get all positions...")
+result = client.get_positions()
+print(f"✅ Got {len(result)} positions")
+if result:
+    pos = result[0]
+    print(f"Sample position:")
+    print(f"  Symbol: {pos.get('symbol')}")
+    print(f"  Net Quantity: {pos.get('netQuantity')}")
+    print(f"  Entry Price: {pos.get('entryPrice')}")
+    print(f"  Mark Price: {pos.get('markPrice')}")
+    print(f"  Unrealized PnL: {pos.get('pnlUnrealized')}")
+else:
+    print("No open positions")
+
+# Test 2: Error handling
+print("\nTest 2: Error handling...")
+# Test with invalid auth or network error scenarios
+```
+
+**Success Criteria**: ✅
+- Client method initializes successfully
+- `get_positions()` returns list of positions (or empty list)
+- Returns all expected position fields
+- Errors are handled gracefully
+- Works with accounts that have no positions (returns empty list)
+
+---
+
+## Phase 10: MCP Tool - List Positions
+**Goal**: Connect MCP server to Backpack client for listing positions
+
+**Deliverable**: Working `list_positions` tool in MCP server
+
+**Implementation**:
+- Add `list_positions` tool to `mcp_server.py`
+- Call `client.get_positions()`
+- Handle errors and return proper format
+- Return structured response with position details
+
+**Code Addition**:
+```python
+@mcp.tool()
+def list_positions() -> dict:
+    """
+    List all open perpetual positions.
+    
+    Retrieves all open positions for PERP markets. Returns detailed
+    information about each position including entry price, mark price,
+    PnL, liquidation price, and margin factors.
+    
+    Returns:
+        Dictionary containing:
+        - positions: List of position objects, each with:
+          * symbol: Trading pair
+          * netQuantity: Net quantity (positive = long, negative = short)
+          * entryPrice: Entry price
+          * markPrice: Current mark price
+          * breakEvenPrice: Break-even price
+          * estLiquidationPrice: Estimated liquidation price
+          * pnlUnrealized: Unrealized profit/loss
+          * pnlRealized: Realized profit/loss
+          * netExposureQuantity: Net exposure quantity
+          * netExposureNotional: Net exposure notional value
+          * positionId: Unique position identifier
+          * imf: Initial Margin Factor
+          * mmf: Maintenance Margin Factor
+          * cumulativeFundingPayment: Cumulative funding payments
+          * subaccountId: Subaccount ID
+          * userId: User ID
+        - count: Number of positions returned
+    """
+    try:
+        positions = client.get_positions()
+        return {
+            "positions": positions,
+            "count": len(positions)
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "positions": [],
+            "count": 0
+        }
+```
+
+**Test**:
+1. **Direct function test**:
+   ```python
+   # test_list_positions_tool.py
+   from mcp_server import list_positions
+   
+   result = list_positions()
+   print(f"✅ Got {result['count']} positions")
+   
+   if result['count'] > 0:
+       pos = result['positions'][0]
+       print(f"Sample position: {pos.get('symbol')} - {pos.get('netQuantity')}")
+   ```
+
+2. **MCP protocol test** (if tools available):
+   - Use MCP client to call `list_positions` tool
+   - Verify JSON-RPC response format
+   - Check position data structure
+
+**Success Criteria**: ✅
+- Tool is registered in MCP server
+- Returns positions in correct format
+- Handles errors properly
+- Returns empty list when no positions exist
+- All position fields are included in response
+
+---
+
 ## Testing Strategy Summary
 
 ### Unit Tests (Per Phase)
@@ -429,6 +594,10 @@ Phase 6 (Client - Cancel Order)
 Phase 7 (MCP Tool - Cancel Order) ✅ Can test end-to-end here
     ↓
 Phase 8 (Integration & Polish)
+    ↓
+Phase 9 (Client - Get Positions)
+    ↓
+Phase 10 (MCP Tool - List Positions) ✅ Can test end-to-end here
 ```
 
 ---
@@ -439,6 +608,8 @@ Phase 8 (Integration & Polish)
 - ✅ **Phase 3**: Can list orders via MCP
 - ✅ **Phase 5**: Can create orders via MCP
 - ✅ **Phase 7**: Can cancel orders via MCP
-- ✅ **Phase 8**: Production-ready MCP server
+- ✅ **Phase 8**: Production-ready MCP server (orders)
+- ⬜ **Phase 9**: Can retrieve positions via client
+- ⬜ **Phase 10**: Can list positions via MCP
 
 Each phase builds on the previous but can be tested independently!
