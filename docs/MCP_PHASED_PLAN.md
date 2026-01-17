@@ -555,6 +555,212 @@ def list_positions() -> dict:
 
 ---
 
+## Phase 11: Backpack Client - Get Balances
+**Goal**: Add method to retrieve account balances
+
+**Deliverable**: `get_balances()` method in `BackpackClient`
+
+**Implementation**:
+- Add `get_balances()` method to `BackpackClient`
+- Call `GET /api/v1/capital` endpoint
+- Use `balanceQuery` instruction (from Backpack API docs)
+- No query parameters needed (returns all balances)
+- Handle errors and return clean data
+- Reuse logic from `example_get_balances()`
+
+**Code Structure**:
+```python
+def get_balances(self) -> Dict[str, Dict[str, str]]:
+    """
+    Get all account balances.
+    
+    Retrieves balances for all assets in the account. Returns available,
+    locked, and staked amounts for each asset.
+    
+    Note: Funds that are lent out don't appear here - check borrow/lend positions.
+    
+    Returns:
+        Dictionary with asset symbols as keys, each containing:
+        - available: Available balance (can be used for trading)
+        - locked: Locked balance (committed to open orders)
+        - staked: Staked balance (staked for rewards)
+        
+        Example:
+        {
+            "BTC": {
+                "available": "0.5",
+                "locked": "0.1",
+                "staked": "0.0"
+            },
+            "USDC": {
+                "available": "1000.0",
+                "locked": "50.0",
+                "staked": "0.0"
+            }
+        }
+    
+    Raises:
+        ValueError: If API returns an error response
+        requests.RequestException: If network request fails
+    """
+    # Implementation here
+```
+
+**Test**:
+```python
+# test_balances.py
+from backpack_client import BackpackClient
+
+client = BackpackClient()
+
+# Test 1: Get all balances
+print("Test 1: Get all balances...")
+result = client.get_balances()
+print(f"✅ Got balances for {len(result)} assets")
+
+if result:
+    # Show first few assets with non-zero balances
+    print("\nSample balances:")
+    for asset, balance in sorted(result.items()):
+        available = float(balance.get('available', '0') or '0')
+        locked = float(balance.get('locked', '0') or '0')
+        staked = float(balance.get('staked', '0') or '0')
+        total = available + locked + staked
+        
+        if total > 0:
+            print(f"  {asset}:")
+            print(f"    Available: {balance.get('available', '0')}")
+            print(f"    Locked: {balance.get('locked', '0')}")
+            print(f"    Staked: {balance.get('staked', '0')}")
+            print(f"    Total: {total}")
+            break  # Show first non-zero balance
+else:
+    print("No balances found")
+
+# Test 2: Error handling
+print("\nTest 2: Error handling...")
+# Test with invalid auth or network error scenarios
+```
+
+**Success Criteria**: ✅
+- Client method initializes successfully
+- `get_balances()` returns dictionary of balances
+- Returns all expected balance fields (available, locked, staked)
+- Handles assets with zero balances correctly
+- Errors are handled gracefully
+- Works with accounts that have no balances (returns empty dict)
+
+---
+
+## Phase 12: MCP Tool - Get Balances
+**Goal**: Connect MCP server to Backpack client for retrieving balances
+
+**Deliverable**: Working `get_balances` tool in MCP server
+
+**Implementation**:
+- Add `get_balances` tool to `mcp_server.py`
+- Call `client.get_balances()`
+- Handle errors and return proper format
+- Return structured response with balance details
+- Optionally filter to show only assets with non-zero balances
+
+**Code Addition**:
+```python
+@mcp.tool()
+def get_balances(showZeroBalances: bool = False) -> dict:
+    """
+    Get all account balances.
+    
+    Retrieves balances for all assets in the account. Returns available,
+    locked, and staked amounts for each asset.
+    
+    Note: Funds that are lent out don't appear here - check borrow/lend positions.
+    
+    Args:
+        showZeroBalances: If False (default), only show assets with non-zero balances.
+                         If True, show all assets including zero balances.
+    
+    Returns:
+        Dictionary containing:
+        - balances: Dictionary with asset symbols as keys, each containing:
+          * available: Available balance (can be used for trading)
+          * locked: Locked balance (committed to open orders)
+          * staked: Staked balance (staked for rewards)
+        - count: Number of assets with balances
+        - totalAssets: Total number of assets (including zero balances if showZeroBalances=True)
+        - error: Error message (if error occurred)
+    """
+    try:
+        # Call the Backpack client to get balances
+        all_balances = client.get_balances()
+        
+        # Filter zero balances if requested
+        if showZeroBalances:
+            balances = all_balances
+        else:
+            balances = {
+                asset: bal for asset, bal in all_balances.items()
+                if float(bal.get('available', '0') or '0') > 0
+                or float(bal.get('locked', '0') or '0') > 0
+                or float(bal.get('staked', '0') or '0') > 0
+            }
+        
+        # Return structured response
+        return {
+            "balances": balances,
+            "count": len(balances),
+            "totalAssets": len(all_balances)
+        }
+    except ValueError as e:
+        # Return error in response format (don't raise, so MCP can handle it)
+        return {
+            "error": str(e),
+            "balances": {},
+            "count": 0,
+            "totalAssets": 0
+        }
+    except Exception as e:
+        # Handle unexpected errors
+        return {
+            "error": f"Unexpected error: {str(e)}",
+            "balances": {},
+            "count": 0,
+            "totalAssets": 0
+        }
+```
+
+**Test**:
+1. **Direct function test**:
+   ```python
+   # test_get_balances_tool.py
+   from mcp_server import get_balances
+   
+   result = get_balances()
+   print(f"✅ Got balances for {result['count']} assets")
+   
+   if result['count'] > 0:
+       # Show first asset
+       asset = list(result['balances'].keys())[0]
+       bal = result['balances'][asset]
+       print(f"Sample: {asset} - Available: {bal.get('available')}")
+   ```
+
+2. **MCP protocol test** (if tools available):
+   - Use MCP client to call `get_balances` tool
+   - Verify JSON-RPC response format
+   - Check balance data structure
+   - Test with `showZeroBalances=True` and `False`
+
+**Success Criteria**: ✅
+- Tool is registered in MCP server
+- Returns balances in correct format
+- Handles errors properly
+- Filters zero balances correctly when requested
+- All balance fields are included in response
+- Works with accounts that have no balances (returns empty dict)
+
+---
+
 ## Testing Strategy Summary
 
 ### Unit Tests (Per Phase)
@@ -598,6 +804,10 @@ Phase 8 (Integration & Polish)
 Phase 9 (Client - Get Positions)
     ↓
 Phase 10 (MCP Tool - List Positions) ✅ Can test end-to-end here
+    ↓
+Phase 11 (Client - Get Balances)
+    ↓
+Phase 12 (MCP Tool - Get Balances) ✅ Can test end-to-end here
 ```
 
 ---
@@ -611,5 +821,7 @@ Phase 10 (MCP Tool - List Positions) ✅ Can test end-to-end here
 - ✅ **Phase 8**: Production-ready MCP server (orders)
 - ⬜ **Phase 9**: Can retrieve positions via client
 - ⬜ **Phase 10**: Can list positions via MCP
+- ⬜ **Phase 11**: Can retrieve balances via client
+- ⬜ **Phase 12**: Can get balances via MCP
 
 Each phase builds on the previous but can be tested independently!
