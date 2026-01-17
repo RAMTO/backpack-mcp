@@ -109,12 +109,15 @@ def create_auth_from_env() -> BackpackAuth:
     """
     Create BackpackAuth instance from environment variables.
     
-    Supports multiple environment variable names:
-    - Public key: BACKPACK_PUBLIC_KEY or BACKPACK_API_KEY
-    - Private key: BACKPACK_PRIVATE_KEY or BACKPACK_SECRET_KEY
+    Reads the following environment variables from .env file:
+    - BACKPACK_PRIVATE_KEY: Base64-encoded ED25519 private key
+    - BACKPACK_PUBLIC_KEY: Base64-encoded ED25519 public key
     
     Returns:
         BackpackAuth instance
+    
+    Raises:
+        ValueError: If required environment variables are missing
     """
     import os
     from dotenv import load_dotenv
@@ -122,26 +125,20 @@ def create_auth_from_env() -> BackpackAuth:
     # Load environment variables from .env file
     load_dotenv()
     
-    # Try multiple possible names for private key
-    private_key = (
-        os.getenv('BACKPACK_PRIVATE_KEY') or 
-        os.getenv('BACKPACK_SECRET_KEY')
-    )
+    # Get private key (required)
+    private_key = os.getenv('BACKPACK_PRIVATE_KEY')
     
-    # Try multiple possible names for public key
-    public_key = (
-        os.getenv('BACKPACK_PUBLIC_KEY') or 
-        os.getenv('BACKPACK_API_KEY')
-    )
+    # Get public key (required)
+    public_key = os.getenv('BACKPACK_PUBLIC_KEY')
     
     if not private_key:
         raise ValueError(
-            "Missing private key. Set BACKPACK_PRIVATE_KEY or BACKPACK_SECRET_KEY"
+            "Missing private key. Set BACKPACK_PRIVATE_KEY in .env file"
         )
     
     if not public_key:
         raise ValueError(
-            "Missing public key. Set BACKPACK_PUBLIC_KEY or BACKPACK_API_KEY"
+            "Missing public key. Set BACKPACK_PUBLIC_KEY in .env file"
         )
     
     return BackpackAuth(private_key, public_key)
