@@ -18,7 +18,7 @@ A Model Context Protocol (MCP) server that provides AI assistants with tools to 
 ## Project Structure
 
 ```
-backpack-api/
+backpack-mcp/
 ├── auth.py                 # ED25519 authentication module
 ├── backpack_client.py       # Backpack API client wrapper
 ├── mcp_server.py           # MCP server with tools
@@ -35,7 +35,7 @@ backpack-api/
 ### 1. Clone or Navigate to Project
 
 ```bash
-cd backpack-api
+cd backpack-mcp
 ```
 
 ### 2. Install Dependencies
@@ -86,9 +86,9 @@ The MCP server allows AI assistants like Cursor to interact with your Backpack a
 {
   "mcpServers": {
     "backpack": {
-      "command": "/Users/martindobrev/Code/backpack-api/venv/bin/python",
+      "command": "/Users/martindobrev/Code/backpack-mcp/venv/bin/python",
       "args": [
-        "/Users/martindobrev/Code/backpack-api/mcp_server.py"
+        "/Users/martindobrev/Code/backpack-mcp/mcp_server.py"
       ]
     }
   }
