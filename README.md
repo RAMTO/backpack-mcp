@@ -4,9 +4,14 @@ A Model Context Protocol (MCP) server that provides AI assistants with tools to 
 
 ## Features
 
-- **List Orders**: View all open spot orders, optionally filtered by trading pair
-- **Create Orders**: Place limit or market orders (buy/sell)
-- **Cancel Orders**: Cancel specific orders by ID
+- **Order Management**:
+  - List open spot orders (optionally filtered by trading pair)
+  - Create limit or market orders (buy/sell) for both SPOT and PERP markets
+  - Cancel specific orders by ID
+- **Position Management**:
+  - List all open perpetual positions with PnL, entry price, liquidation price, etc.
+- **Account Management**:
+  - Get account balances (available, locked, staked, and lent funds)
 - **Secure Authentication**: ED25519 signature-based authentication
 - **Local-Only**: Uses stdio transport for secure local communication
 
@@ -98,6 +103,9 @@ The MCP server allows AI assistants like Cursor to interact with your Backpack a
    - "List my open orders"
    - "Create a limit buy order for 0.001 BTC at $80,000"
    - "Cancel order 12345 for BTC_USDC"
+   - "Show my positions"
+   - "Get my balances"
+   - "Open a long position in SOL_USDC_PERP for $10"
 
 ### Direct Python Usage
 
@@ -112,9 +120,9 @@ client = BackpackClient()
 orders = client.get_orders()
 print(f"Found {len(orders)} orders")
 
-# Create order
+# Create order (SPOT or PERP)
 order = client.create_order(
-    symbol="BTC_USDC",
+    symbol="BTC_USDC",  # or "BTC_USDC_PERP" for perpetual
     side="Bid",
     orderType="Limit",
     quantity="0.001",
@@ -123,9 +131,31 @@ order = client.create_order(
 )
 print(f"Order created: {order['id']}")
 
+# Create market order with quote quantity (for PERP)
+perp_order = client.create_order(
+    symbol="SOL_USDC_PERP",
+    side="Bid",
+    orderType="Market",
+    quoteQuantity="10"  # $10 worth
+)
+print(f"Perp order created: {perp_order['id']}")
+
 # Cancel order
 cancelled = client.cancel_order(order_id="12345", symbol="BTC_USDC")
 print(f"Order cancelled: {cancelled['status']}")
+
+# List positions
+positions = client.get_positions()
+print(f"Found {len(positions)} positions")
+for pos in positions:
+    print(f"{pos['symbol']}: {pos['netQuantity']} (PnL: {pos['pnlUnrealized']})")
+
+# Get balances (including lent funds)
+balances = client.get_balances()
+for asset, bal in balances.items():
+    total = float(bal['available']) + float(bal['locked']) + float(bal['staked']) + float(bal['lent'])
+    if total > 0:
+        print(f"{asset}: Available={bal['available']}, Lent={bal['lent']}")
 ```
 
 ## Available MCP Tools
@@ -150,15 +180,16 @@ List my BTC_USDC orders
 
 ### `create_order`
 
-Create a new order (limit or market).
+Create a new order (limit or market). Works for both SPOT and PERP markets.
 
 **Parameters:**
-- `symbol` (required): Trading pair (e.g., "BTC_USDC")
+- `symbol` (required): Trading pair (e.g., "BTC_USDC" for spot, "BTC_USDC_PERP" for perpetual)
 - `side` (required): "Bid" (buy) or "Ask" (sell)
 - `orderType` (required): "Limit" or "Market"
-- `quantity` (required): Order quantity
+- `quantity` (optional): Order quantity (required for limit orders, optional for market if quoteQuantity provided)
 - `price` (optional): Limit price (required for Limit orders)
 - `timeInForce` (optional): "GTC" (default), "IOC", or "FOK"
+- `quoteQuantity` (optional): Quote quantity for market orders (e.g., "10" for $10 worth)
 
 **Returns:**
 - `success`: Boolean
@@ -168,6 +199,7 @@ Create a new order (limit or market).
 **Example:**
 ```
 Create a limit buy order for 0.001 BTC at $80,000
+Open a long position in SOL_USDC_PERP for $10 (market order)
 ```
 
 ### `cancel_order`
@@ -188,6 +220,53 @@ Cancel a specific order by ID.
 Cancel order 12345 for BTC_USDC
 ```
 
+### `list_positions`
+
+List all open perpetual positions.
+
+**Parameters:**
+- None
+
+**Returns:**
+- `positions`: List of position objects with:
+  - `symbol`: Trading pair
+  - `netQuantity`: Net quantity (positive = long, negative = short)
+  - `entryPrice`: Entry price
+  - `markPrice`: Current mark price
+  - `pnlUnrealized`: Unrealized profit/loss
+  - `pnlRealized`: Realized profit/loss
+  - `estLiquidationPrice`: Estimated liquidation price
+  - And more...
+- `count`: Number of positions
+
+**Example:**
+```
+Show my positions
+List my perpetual positions
+```
+
+### `get_balances`
+
+Get all account balances including lent funds.
+
+**Parameters:**
+- `showZeroBalances` (optional): If False (default), only show assets with non-zero balances. If True, show all assets.
+
+**Returns:**
+- `balances`: Dictionary with asset symbols as keys, each containing:
+  - `available`: Available balance (can be used for trading)
+  - `locked`: Locked balance (committed to open orders)
+  - `staked`: Staked balance (staked for rewards)
+  - `lent`: Lent balance (funds currently lent out, earning interest)
+- `count`: Number of assets with non-zero balances
+- `totalAssets`: Total number of assets
+
+**Example:**
+```
+Get my balances
+Show my account balances
+```
+
 ## Testing
 
 Run the integration tests:
@@ -201,10 +280,17 @@ python3 test_integration.py
 ```
 
 The tests verify:
-- All tools work correctly
-- Error handling
-- Response structures
-- Full workflow (create → list → cancel)
+- **Scenario 1**: Full workflow (create → list → cancel orders)
+- **Scenario 2**: Error handling for all tools
+- **Scenario 3**: Response structure validation
+- **Scenario 4**: Positions functionality
+- **Scenario 5**: Balances functionality (including lent funds)
+
+All tests are integrated into `test_integration.py` and cover:
+- Order management (list, create, cancel)
+- Position management (list positions)
+- Account management (get balances with lent funds)
+- Error handling and edge cases
 
 ## Security
 
@@ -247,18 +333,36 @@ venv/bin/python -c "from mcp_server import list_orders; print('OK')"
 
 ## Development
 
+### Implementation Phases
+
+The project follows a phased implementation approach (see `docs/MCP_PHASED_PLAN.md`):
+
+**Completed Phases:**
+- ✅ **Phase 0-8**: Setup, MCP server, order management (list, create, cancel)
+- ✅ **Phase 9-10**: Position management (list perpetual positions)
+- ✅ **Phase 11-12**: Account management (get balances including lent funds)
+
+**Current Status:**
+- Production-ready MCP server with order, position, and balance tools
+- All core trading functionality implemented
+- Comprehensive integration tests
+
 ### Project Structure
 
 - `auth.py`: Core authentication (ED25519 signing)
 - `backpack_client.py`: API client wrapper with error handling
 - `mcp_server.py`: MCP server exposing tools
 - `examples/`: Example code for direct API usage
+- `docs/`: Documentation including phased implementation plan
+- `test_integration.py`: Comprehensive integration tests
 
 ### Adding New Tools
 
 1. Add method to `BackpackClient` in `backpack_client.py`
 2. Add MCP tool in `mcp_server.py` using `@mcp.tool()` decorator
-3. Test with integration tests
+3. Add tests to `test_integration.py` as a new scenario
+4. Update `docs/MCP_PHASED_PLAN.md` with new phases
+5. Update this README with new tool documentation
 
 ## License
 
