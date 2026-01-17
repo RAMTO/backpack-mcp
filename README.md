@@ -1,4 +1,4 @@
-# Backpack Exchange MCP Server
+# 🎒 Backpack Exchange MCP Server
 
 A Model Context Protocol (MCP) server that provides AI assistants with tools to interact with the Backpack Exchange API. Manage your orders directly from Cursor or other MCP-compatible AI assistants.
 
@@ -100,6 +100,31 @@ The MCP server allows AI assistants like Cursor to interact with your Backpack a
 - On Windows: `C:\Users\yourusername\Code\backpack-mcp`
 
 You can find your project path by running `pwd` (macOS/Linux) or `cd` (Windows) in your project directory.
+
+**Why API keys aren't in the MCP configuration:**
+
+The MCP configuration (`~/.cursor/mcp.json`) only tells Cursor where to find the Python script and interpreter. It does **not** contain your API keys. This is a security best practice:
+
+- **Separation of concerns**: Configuration (where to run code) is separate from credentials (API keys)
+- **Security**: The `.env` file with your keys is gitignored and never committed
+- **Runtime loading**: The MCP server loads keys from `.env` when it starts, not from the MCP config
+- **Flexibility**: You can change keys without modifying the MCP configuration
+
+**How ED25519 key pairs connect to subaccounts:**
+
+According to the [official Backpack Exchange API documentation](https://docs.backpack.exchange):
+
+1. **One key pair per main account**: The ED25519 key pair (public/private) authenticates your **main Backpack account**, not individual subaccounts.
+
+2. **Subaccounts are identified by parameter**: When you want to use a specific subaccount, you include `subaccountId` as a parameter in API requests. The same key pair authenticates all subaccounts under your main account.
+
+3. **No separate keys needed**: You do **not** need different key pairs for different subaccounts. One key pair gives you access to all subaccounts, and you specify which one to use via the `subaccountId` parameter.
+
+**Example flow:**
+- Generate one ED25519 key pair in Backpack Exchange settings
+- Store it in `.env` (BACKPACK_PRIVATE_KEY and BACKPACK_PUBLIC_KEY)
+- The MCP server uses these keys to sign all requests
+- To access a specific subaccount, include `subaccountId` in the request parameters (if the endpoint supports it)
 
 2. **Restart Cursor** completely (quit and reopen)
 
